@@ -23,9 +23,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="h-12 bg-[#1a1d2e] border-b border-[#2d3154] flex items-center px-4 gap-6 shrink-0">
+      <nav className="h-12 bg-surface border-b border-border flex items-center px-4 gap-6 shrink-0">
         <span className="text-sm font-bold mr-4">
-          <span className="text-indigo-500">Loot</span> Control
+          <span className="text-primary">Loot</span> Control
         </span>
         {navItems.map((item) => (
           <Link
@@ -33,8 +33,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             href={item.href}
             className={`text-sm font-medium transition-colors ${
               pathname.startsWith(item.href)
-                ? "text-indigo-400"
-                : "text-[#94a3b8] hover:text-[#f1f5f9]"
+                ? "text-primary"
+                : "text-muted hover:text-text-primary"
             }`}
           >
             {item.label}
@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ))}
         <button
           onClick={handleSignOut}
-          className="ml-auto text-xs text-[#6b7280] hover:text-[#94a3b8] transition-colors"
+          className="ml-auto text-xs text-text-secondary hover:text-muted transition-colors"
         >
           Sair
         </button>

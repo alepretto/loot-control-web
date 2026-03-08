@@ -79,25 +79,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f1117]">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
-            <span className="text-indigo-500">Loot</span> Control
+            <span className="text-primary">Loot</span> Control
           </h1>
-          <p className="text-[#94a3b8] text-sm mt-1">Controle financeiro sem atrito</p>
+          <p className="text-text-secondary text-sm mt-1">Controle financeiro sem atrito</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex mb-4 bg-[#1a1d2e] rounded-xl border border-[#2d3154] p-1">
+        <div className="flex mb-4 bg-surface rounded-xl border border-border p-1">
           {(["login", "signup"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setFeedback(null); }}
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                 tab === t
-                  ? "bg-indigo-500 text-white"
-                  : "text-[#6b7280] hover:text-[#94a3b8]"
+                  ? "bg-primary text-white"
+                  : "text-text-secondary hover:text-text-primary"
               }`}
             >
               {t === "login" ? "Entrar" : "Cadastrar"}
@@ -105,14 +105,14 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <div className="bg-[#1a1d2e] rounded-xl border border-[#2d3154] p-6">
+        <div className="bg-surface rounded-xl border border-border p-6">
           {/* Feedback */}
           {feedback && (
             <div
               className={`mb-4 text-xs rounded-lg px-3 py-2 border ${
                 feedback.type === "error"
-                  ? "text-red-400 bg-red-500/10 border-red-500/20"
-                  : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                  ? "text-danger bg-danger/10 border-danger/20"
+                  : "text-accent bg-accent/10 border-accent/20"
               }`}
             >
               {feedback.message}
@@ -225,12 +225,12 @@ export default function LoginPage() {
 }
 
 const inputClass =
-  "w-full bg-[#252840] border border-[#2d3154] rounded-lg px-3 py-2.5 text-sm text-[#f1f5f9] placeholder:text-[#6b7280] focus:outline-none focus:border-indigo-500 transition-colors";
+  "w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-primary transition-colors";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-[#94a3b8] mb-1.5 uppercase tracking-wider">
+      <label className="block text-xs text-text-secondary mb-1.5 uppercase tracking-wider">
         {label}
       </label>
       {children}
@@ -251,7 +251,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+      className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
     >
       {loading ? loadingLabel : label}
     </button>

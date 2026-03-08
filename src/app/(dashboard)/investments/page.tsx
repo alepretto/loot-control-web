@@ -17,10 +17,10 @@ import { transactionsApi, tagsApi, categoriesApi, Transaction, Tag, Category } f
 import { formatCurrency } from "@/lib/utils";
 
 const ASSET_CLASSES: Record<string, { label: string; color: string; keywords: string[] }> = {
-  crypto: { label: "Crypto", color: "#6366f1", keywords: ["BTC", "ETH", "SOL", "BITCOIN", "ETHEREUM"] },
-  stocks_br: { label: "Ações BR", color: "#10b981", keywords: ["PETR4", "VALE3", "ITUB4", "BBDC4"] },
+  crypto: { label: "Crypto", color: "#2563eb", keywords: ["BTC", "ETH", "SOL", "BITCOIN", "ETHEREUM"] },
+  stocks_br: { label: "Ações BR", color: "#22c55e", keywords: ["PETR4", "VALE3", "ITUB4", "BBDC4"] },
   fixed_income: { label: "Renda Fixa", color: "#f59e0b", keywords: ["CDB", "LCI", "LCA", "TESOURO", "CDI"] },
-  stocks_us: { label: "Stocks EUA", color: "#3b82f6", keywords: ["AAPL", "TSLA", "NVDA", "AMZN"] },
+  stocks_us: { label: "Stocks EUA", color: "#38bdf8", keywords: ["AAPL", "TSLA", "NVDA", "AMZN"] },
 };
 
 function classifyAsset(symbol: string | null, index: string | null): string {
@@ -50,6 +50,10 @@ export default function InvestmentsPage() {
     load();
   }, []);
 
+  // suppress unused vars warning
+  void categories;
+  void tags;
+
   const investmentTxs = transactions.filter((tx) => tx.symbol || tx.index);
 
   const byClass = investmentTxs.reduce<Record<string, Transaction[]>>((acc, tx) => {
@@ -62,7 +66,7 @@ export default function InvestmentsPage() {
   const pieData = Object.entries(byClass).map(([key, txs]) => ({
     name: ASSET_CLASSES[key]?.label ?? key,
     value: txs.reduce((s, tx) => s + tx.value, 0),
-    color: ASSET_CLASSES[key]?.color ?? "#6b7280",
+    color: ASSET_CLASSES[key]?.color ?? "#8b949e",
   }));
 
   const dailyMap = investmentTxs.reduce<Record<string, number>>((acc, tx) => {
@@ -79,7 +83,7 @@ export default function InvestmentsPage() {
     }, []);
 
   const tooltipStyle = {
-    contentStyle: { background: "#1a1d2e", border: "1px solid #2d3154", fontSize: 12 },
+    contentStyle: { background: "#141619", border: "1px solid #2a2d35", fontSize: 12 },
   };
 
   return (
@@ -88,21 +92,21 @@ export default function InvestmentsPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-4">
-          <p className="text-xs text-[#94a3b8] uppercase tracking-wider mb-4">Aportes Acumulados</p>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-xs text-muted uppercase tracking-wider mb-4">Aportes Acumulados</p>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={lineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2d3154" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2d35" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#8b949e" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#8b949e" }} />
               <Tooltip {...tooltipStyle} formatter={(v: number) => formatCurrency(v, "BRL")} />
-              <Line type="monotone" dataKey="acumulado" stroke="#6366f1" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="acumulado" stroke="#2563eb" dot={false} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-4">
-          <p className="text-xs text-[#94a3b8] uppercase tracking-wider mb-4">Alocação por Classe</p>
+        <div className="bg-surface border border-border rounded-xl p-4">
+          <p className="text-xs text-muted uppercase tracking-wider mb-4">Alocação por Classe</p>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value">
@@ -117,7 +121,7 @@ export default function InvestmentsPage() {
             {pieData.map((entry) => (
               <div key={entry.name} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
-                <span className="text-xs text-[#94a3b8]">{entry.name}</span>
+                <span className="text-xs text-muted">{entry.name}</span>
               </div>
             ))}
           </div>
@@ -137,12 +141,12 @@ export default function InvestmentsPage() {
         }, {});
 
         return (
-          <div key={cls} className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 bg-[#252840] border-b border-[#2d3154]">
+          <div key={cls} className="bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-surface-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <div
                   className="w-2 h-2 rounded-full"
-                  style={{ background: config?.color ?? "#6b7280" }}
+                  style={{ background: config?.color ?? "#8b949e" }}
                 />
                 <span className="text-sm font-medium">{config?.label ?? cls}</span>
               </div>
@@ -150,19 +154,19 @@ export default function InvestmentsPage() {
             </div>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#2d3154]">
-                  <th className="text-left px-4 py-2 text-xs text-[#94a3b8] font-medium">Símbolo</th>
-                  <th className="text-right px-4 py-2 text-xs text-[#94a3b8] font-medium">Quantidade</th>
-                  <th className="text-right px-4 py-2 text-xs text-[#94a3b8] font-medium">
+                <tr className="border-b border-border">
+                  <th className="text-left px-4 py-2 text-xs text-muted font-medium">Símbolo</th>
+                  <th className="text-right px-4 py-2 text-xs text-muted font-medium">Quantidade</th>
+                  <th className="text-right px-4 py-2 text-xs text-muted font-medium">
                     Total Aportado
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2d3154]">
+              <tbody className="divide-y divide-border">
                 {Object.entries(bySymbol).map(([sym, data]) => (
                   <tr key={sym}>
-                    <td className="px-4 py-2 text-sm font-mono text-indigo-400">{sym}</td>
-                    <td className="px-4 py-2 text-sm font-mono text-right text-[#94a3b8]">
+                    <td className="px-4 py-2 text-sm font-mono text-primary">{sym}</td>
+                    <td className="px-4 py-2 text-sm font-mono text-right text-muted">
                       {data.qty > 0 ? data.qty.toFixed(4) : "—"}
                     </td>
                     <td className="px-4 py-2 text-sm font-mono text-right">
@@ -177,7 +181,7 @@ export default function InvestmentsPage() {
       })}
 
       {investmentTxs.length === 0 && (
-        <p className="text-center text-[#6b7280] py-12 text-sm">
+        <p className="text-center text-muted py-12 text-sm">
           Nenhuma transação de investimento encontrada. Adicione transações com símbolo ou índice.
         </p>
       )}

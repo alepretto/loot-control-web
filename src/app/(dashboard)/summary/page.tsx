@@ -55,16 +55,16 @@ export default function SummaryPage() {
       {/* Totals */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Entradas", value: totalIncome, color: "text-emerald-400" },
-          { label: "Total Saídas", value: totalOutcome, color: "text-red-400" },
+          { label: "Total Entradas", value: totalIncome, color: "text-accent" },
+          { label: "Total Saídas", value: totalOutcome, color: "text-danger" },
           {
             label: "Saldo",
             value: balance,
-            color: balance >= 0 ? "text-emerald-400" : "text-red-400",
+            color: balance >= 0 ? "text-accent" : "text-danger",
           },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-4">
-            <p className="text-xs text-[#94a3b8] uppercase tracking-wider mb-1">{label}</p>
+          <div key={label} className="bg-surface border border-border rounded-xl p-4">
+            <p className="text-xs text-muted uppercase tracking-wider mb-1">{label}</p>
             <p className={`text-xl font-bold ${color}`}>{formatCurrency(value, "BRL")}</p>
           </div>
         ))}
@@ -75,9 +75,9 @@ export default function SummaryPage() {
         {months.map((month) => (
           <div
             key={month.label}
-            className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl overflow-hidden"
+            className="bg-surface border border-border rounded-xl overflow-hidden"
           >
-            <div className="flex items-center justify-between px-4 py-2 bg-[#252840] border-b border-[#2d3154]">
+            <div className="flex items-center justify-between px-4 py-2 bg-surface-2 border-b border-border">
               <span className="text-sm font-medium">
                 {new Date(month.label + "-02").toLocaleDateString("pt-BR", {
                   month: "long",
@@ -85,24 +85,24 @@ export default function SummaryPage() {
                 })}
               </span>
               <div className="flex gap-4 text-xs">
-                <span className="text-emerald-400">+{formatCurrency(month.income, "BRL")}</span>
-                <span className="text-red-400">-{formatCurrency(month.outcome, "BRL")}</span>
+                <span className="text-accent">+{formatCurrency(month.income, "BRL")}</span>
+                <span className="text-danger">-{formatCurrency(month.outcome, "BRL")}</span>
                 <span
                   className={`font-medium ${
-                    month.income - month.outcome >= 0 ? "text-emerald-400" : "text-red-400"
+                    month.income - month.outcome >= 0 ? "text-accent" : "text-danger"
                   }`}
                 >
                   = {formatCurrency(month.income - month.outcome, "BRL")}
                 </span>
               </div>
             </div>
-            <div className="divide-y divide-[#2d3154]">
+            <div className="divide-y divide-border">
               {month.items.map((item, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-1.5">
-                  <span className="text-sm text-[#94a3b8]">{item.category}</span>
+                  <span className="text-sm text-muted">{item.category}</span>
                   <span
                     className={`text-sm font-mono ${
-                      item.type === "income" ? "text-emerald-400" : "text-[#f1f5f9]"
+                      item.type === "income" ? "text-accent" : "text-text-primary"
                     }`}
                   >
                     {item.type === "income" ? "+" : "-"}

@@ -43,17 +43,17 @@ export default function TagsPage() {
   }
 
   const inputCls =
-    "flex-1 bg-[#252840] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-[#f1f5f9] placeholder:text-[#6b7280] focus:outline-none focus:border-indigo-500";
+    "flex-1 bg-surface-2 border border-border rounded px-2 py-1.5 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-primary";
   const selectCls =
-    "bg-[#252840] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-[#f1f5f9] focus:outline-none focus:border-indigo-500";
+    "bg-surface-2 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-primary";
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <h1 className="text-lg font-semibold">Tags & Categorias</h1>
 
       {/* Add Category */}
-      <section className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-4">
-        <h2 className="text-xs font-medium text-[#94a3b8] uppercase tracking-wider mb-3">
+      <section className="bg-surface border border-border rounded-xl p-4">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
           Nova Categoria
         </h2>
         <form onSubmit={createCategory} className="flex gap-2 items-center">
@@ -78,8 +78,8 @@ export default function TagsPage() {
       </section>
 
       {/* Add Tag */}
-      <section className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-4">
-        <h2 className="text-xs font-medium text-[#94a3b8] uppercase tracking-wider mb-3">
+      <section className="bg-surface border border-border rounded-xl p-4">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
           Nova Tag
         </h2>
         <form onSubmit={createTag} className="flex gap-2 items-center">
@@ -112,28 +112,28 @@ export default function TagsPage() {
         {categories.map((cat) => (
           <div
             key={cat.id}
-            className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl overflow-hidden"
+            className="bg-surface border border-border rounded-xl overflow-hidden"
           >
-            <div className="flex items-center gap-2 px-4 py-2 bg-[#252840] border-b border-[#2d3154]">
+            <div className="flex items-center gap-2 px-4 py-2 bg-surface-2 border-b border-border">
               <span
                 className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                   cat.type === "income"
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-red-500/20 text-red-400"
+                    ? "bg-accent/20 text-accent"
+                    : "bg-danger/20 text-danger"
                 }`}
               >
                 {cat.type === "income" ? "Entrada" : "Saída"}
               </span>
               <span className="text-sm font-medium">{cat.name}</span>
             </div>
-            <div className="divide-y divide-[#2d3154]">
+            <div className="divide-y divide-border">
               {tags
                 .filter((t) => t.category_id === cat.id)
                 .map((tag) => (
                   <div key={tag.id} className="flex items-center justify-between px-4 py-2">
                     <span
                       className={`text-sm ${
-                        tag.is_active ? "text-[#f1f5f9]" : "text-[#6b7280] line-through"
+                        tag.is_active ? "text-text-primary" : "text-muted line-through"
                       }`}
                     >
                       {tag.name}
@@ -142,8 +142,8 @@ export default function TagsPage() {
                       onClick={() => toggleTag(tag)}
                       className={`text-xs transition-colors ${
                         tag.is_active
-                          ? "text-[#6b7280] hover:text-red-400"
-                          : "text-emerald-400 hover:text-emerald-300"
+                          ? "text-text-secondary hover:text-danger"
+                          : "text-accent hover:text-accent/80"
                       }`}
                     >
                       {tag.is_active ? "Desativar" : "Ativar"}
@@ -151,7 +151,7 @@ export default function TagsPage() {
                   </div>
                 ))}
               {tags.filter((t) => t.category_id === cat.id).length === 0 && (
-                <p className="px-4 py-3 text-xs text-[#6b7280] italic">Nenhuma tag</p>
+                <p className="px-4 py-3 text-xs text-muted italic">Nenhuma tag</p>
               )}
             </div>
           </div>

@@ -17,11 +17,11 @@ export function Button({
       className={cn(
         "font-medium rounded transition-colors disabled:opacity-50",
         size === "sm" ? "text-xs px-2 py-1" : "text-sm px-3 py-2",
-        variant === "primary" && "bg-indigo-500 hover:bg-indigo-600 text-white",
+        variant === "primary" && "bg-primary hover:bg-primary-hover text-white",
         variant === "ghost" &&
-          "bg-transparent hover:bg-[#252840] text-[#94a3b8] hover:text-[#f1f5f9] border border-[#2d3154]",
+          "bg-transparent hover:bg-surface-2 text-muted hover:text-text-primary border border-border",
         variant === "danger" &&
-          "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20",
+          "bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20",
         className
       )}
       {...props}

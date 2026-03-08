@@ -54,12 +54,12 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
   }
 
   const inputCls =
-    "bg-[#1a1d2e] border border-[#2d3154] rounded px-1 py-0.5 text-xs text-[#f1f5f9] focus:outline-none focus:border-indigo-500 w-full";
+    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none focus:border-primary w-full";
   const selectCls =
-    "bg-[#1a1d2e] border border-[#2d3154] rounded px-1 py-0.5 text-xs text-[#f1f5f9] focus:outline-none focus:border-indigo-500";
+    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none focus:border-primary";
 
   return (
-    <tr className="bg-emerald-500/5 border-t-2 border-emerald-500/30">
+    <tr className="bg-accent/5 border-t-2 border-accent/30">
       <td className="px-3 py-1.5">
         <input
           type="datetime-local"
@@ -169,7 +169,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         <button
           onClick={handleSubmit}
           disabled={saving || !form.tag_id || !form.value}
-          className="text-emerald-400 text-xs font-medium hover:underline disabled:opacity-40 whitespace-nowrap"
+          className="text-accent text-xs font-medium hover:underline disabled:opacity-40 whitespace-nowrap"
         >
           + Add
         </button>

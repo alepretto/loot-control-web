@@ -44,15 +44,18 @@ export default function TransactionsPage() {
 
   const totalPages = data ? Math.ceil(data.total / 50) : 1;
 
+  const controlCls =
+    "bg-surface-2 border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-primary";
+
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-[#2d3154] bg-[#1a1d2e] shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-surface shrink-0">
         <span className="text-sm font-medium mr-2">Transações</span>
         <select
           value={filters.currency}
           onChange={(e) => { setFilters({ ...filters, currency: e.target.value }); setPage(1); }}
-          className="bg-[#252840] border border-[#2d3154] rounded px-2 py-1 text-xs text-[#f1f5f9] focus:outline-none focus:border-indigo-500"
+          className={controlCls}
         >
           <option value="">Moeda</option>
           <option>BRL</option>
@@ -63,17 +66,17 @@ export default function TransactionsPage() {
           type="date"
           value={filters.date_from}
           onChange={(e) => { setFilters({ ...filters, date_from: e.target.value }); setPage(1); }}
-          className="bg-[#252840] border border-[#2d3154] rounded px-2 py-1 text-xs text-[#f1f5f9] focus:outline-none focus:border-indigo-500"
+          className={controlCls}
         />
-        <span className="text-[#6b7280] text-xs">até</span>
+        <span className="text-text-secondary text-xs">até</span>
         <input
           type="date"
           value={filters.date_to}
           onChange={(e) => { setFilters({ ...filters, date_to: e.target.value }); setPage(1); }}
-          className="bg-[#252840] border border-[#2d3154] rounded px-2 py-1 text-xs text-[#f1f5f9] focus:outline-none focus:border-indigo-500"
+          className={controlCls}
         />
         {data && (
-          <span className="ml-auto text-xs text-[#6b7280]">{data.total} registros</span>
+          <span className="ml-auto text-xs text-text-secondary">{data.total} registros</span>
         )}
       </div>
 
@@ -113,11 +116,11 @@ export default function TransactionsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 py-2 border-t border-[#2d3154] shrink-0 bg-[#1a1d2e]">
+        <div className="flex items-center justify-center gap-2 py-2 border-t border-border shrink-0 bg-surface">
           <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
             ← Anterior
           </Button>
-          <span className="text-xs text-[#6b7280]">
+          <span className="text-xs text-text-secondary">
             {page} / {totalPages}
           </span>
           <Button

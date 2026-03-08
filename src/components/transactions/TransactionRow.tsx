@@ -47,45 +47,45 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
     onDeleted();
   }
 
-  const cellCls = "px-3 py-1.5 text-sm border-b border-r border-[#2d3154]";
+  const cellCls = "px-3 py-1.5 text-sm border-b border-r border-border";
   const inputCls =
-    "bg-[#0f1117] border border-indigo-500 rounded px-1 py-0.5 text-xs text-[#f1f5f9] focus:outline-none w-full";
+    "bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none w-full";
 
   if (!editing) {
     return (
-      <tr onDoubleClick={() => setEditing(true)} className="cursor-default group hover:bg-[#252840]">
-        <td className={`${cellCls} font-mono text-xs text-[#94a3b8]`}>
+      <tr onDoubleClick={() => setEditing(true)} className="cursor-default group hover:bg-surface-2">
+        <td className={`${cellCls} font-mono text-xs text-muted`}>
           {formatDate(transaction.date_transaction)}
         </td>
         <td className={cellCls}>
           <span
             className={`text-xs font-medium px-1.5 py-0.5 rounded ${
               isIncome
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "bg-red-500/20 text-red-400"
+                ? "bg-accent/20 text-accent"
+                : "bg-danger/20 text-danger"
             }`}
           >
             {isIncome ? "Entrada" : "Saída"}
           </span>
         </td>
-        <td className={`${cellCls} text-[#94a3b8]`}>{category?.name ?? "—"}</td>
+        <td className={`${cellCls} text-muted`}>{category?.name ?? "—"}</td>
         <td className={cellCls}>{tag?.name ?? "—"}</td>
         <td className={`${cellCls} font-mono text-right`}>
-          <span className={isIncome ? "text-emerald-400" : "text-[#f1f5f9]"}>
+          <span className={isIncome ? "text-accent" : "text-text-primary"}>
             {formatCurrency(transaction.value, transaction.currency)}
           </span>
         </td>
-        <td className={`${cellCls} text-[#94a3b8]`}>{transaction.currency}</td>
-        <td className={`${cellCls} font-mono text-right text-[#94a3b8]`}>
+        <td className={`${cellCls} text-muted`}>{transaction.currency}</td>
+        <td className={`${cellCls} font-mono text-right text-muted`}>
           {transaction.quantity ?? ""}
         </td>
-        <td className={`${cellCls} text-[#94a3b8]`}>{transaction.symbol ?? ""}</td>
-        <td className={`${cellCls} font-mono text-right text-[#94a3b8]`}>
+        <td className={`${cellCls} text-muted`}>{transaction.symbol ?? ""}</td>
+        <td className={`${cellCls} font-mono text-right text-muted`}>
           {transaction.index_rate ?? ""}
         </td>
-        <td className={`${cellCls} text-[#94a3b8]`}>{transaction.index ?? ""}</td>
+        <td className={`${cellCls} text-muted`}>{transaction.index ?? ""}</td>
         <td className={`${cellCls} opacity-0 group-hover:opacity-100 transition-opacity`}>
-          <button onClick={remove} className="text-red-400 text-xs hover:underline">
+          <button onClick={remove} className="text-danger text-xs hover:underline">
             ✕
           </button>
         </td>
@@ -94,7 +94,7 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
   }
 
   return (
-    <tr className="bg-indigo-500/5">
+    <tr className="bg-primary/5">
       <td className={cellCls}>
         <input
           type="datetime-local"
@@ -107,7 +107,7 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
         <select
           value={draft.tag_id}
           onChange={(e) => setDraft({ ...draft, tag_id: e.target.value })}
-          className="bg-[#0f1117] border border-indigo-500 rounded px-1 py-0.5 text-xs text-[#f1f5f9] focus:outline-none"
+          className="bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none"
         >
           {tags.map((t) => {
             const cat = categories.find((c) => c.id === t.category_id);
@@ -133,7 +133,7 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
           onChange={(e) =>
             setDraft({ ...draft, currency: e.target.value as Transaction["currency"] })
           }
-          className="bg-[#0f1117] border border-indigo-500 rounded px-1 py-0.5 text-xs text-[#f1f5f9] focus:outline-none"
+          className="bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none"
         >
           {["BRL", "USD", "EUR"].map((c) => (
             <option key={c}>{c}</option>
@@ -181,10 +181,10 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
         />
       </td>
       <td className={`${cellCls} flex gap-2 py-2`}>
-        <button onClick={save} disabled={saving} className="text-emerald-400 text-xs hover:underline">
+        <button onClick={save} disabled={saving} className="text-accent text-xs hover:underline">
           ✓
         </button>
-        <button onClick={() => setEditing(false)} className="text-[#6b7280] text-xs hover:underline">
+        <button onClick={() => setEditing(false)} className="text-text-secondary text-xs hover:underline">
           ✕
         </button>
       </td>
