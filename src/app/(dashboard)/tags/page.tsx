@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/Button";
 export default function TagsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatType, setNewCatType] = useState<CategoryType>("outcome");
+  const [newTagCatId, setNewTagCatId] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
-  const [newTagCatId, setNewTagCatId] = useState("");
 
   async function load() {
     const [cats, tagList] = await Promise.all([categoriesApi.list(), tagsApi.list()]);
     setCategories(cats);
     setTags(tagList);
-    if (cats.length && !newTagCatId) setNewTagCatId(cats[0].id);
   }
 
   useEffect(() => { load(); }, []);
@@ -26,14 +26,29 @@ export default function TagsPage() {
     if (!newCatName.trim()) return;
     await categoriesApi.create({ name: newCatName.trim(), type: newCatType });
     setNewCatName("");
+    setNewCatType("outcome");
+    setShowNewCat(false);
     load();
   }
 
-  async function createTag(e: React.FormEvent) {
+  async function deleteCategory(id: string) {
+    if (!confirm("Excluir categoria e todas as suas tags?")) return;
+    await categoriesApi.delete(id);
+    load();
+  }
+
+  async function createTag(e: React.FormEvent, catId: string) {
     e.preventDefault();
-    if (!newTagName.trim() || !newTagCatId) return;
-    await tagsApi.create({ name: newTagName.trim(), category_id: newTagCatId });
+    if (!newTagName.trim()) return;
+    await tagsApi.create({ name: newTagName.trim(), category_id: catId });
     setNewTagName("");
+    setNewTagCatId(null);
+    load();
+  }
+
+  async function deleteTag(tag: Tag) {
+    if (!confirm(`Excluir tag "${tag.name}"?`)) return;
+    await tagsApi.delete(tag.id);
     load();
   }
 
@@ -43,20 +58,26 @@ export default function TagsPage() {
   }
 
   const inputCls =
-    "flex-1 bg-surface-2 border border-border rounded px-2 py-1.5 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-primary";
+    "flex-1 bg-[#0f1117] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-white placeholder:text-[#6b7280] focus:outline-none focus:border-[#6366f1]";
   const selectCls =
-    "bg-surface-2 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-primary";
+    "bg-[#0f1117] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#6366f1]";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
-      <h1 className="text-lg font-semibold">Tags & Categorias</h1>
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Tags & Categorias</h1>
+        <Button size="sm" onClick={() => setShowNewCat((v) => !v)}>
+          + Nova Categoria
+        </Button>
+      </div>
 
-      {/* Add Category */}
-      <section className="bg-surface border border-border rounded-xl p-4">
-        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
-          Nova Categoria
-        </h2>
-        <form onSubmit={createCategory} className="flex gap-2 items-center">
+      {/* New Category form */}
+      {showNewCat && (
+        <form
+          onSubmit={createCategory}
+          className="flex gap-2 items-center bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-3"
+        >
           <select
             value={newCatType}
             onChange={(e) => setNewCatType(e.target.value as CategoryType)}
@@ -66,96 +87,126 @@ export default function TagsPage() {
             <option value="income">Entrada</option>
           </select>
           <input
+            autoFocus
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
             placeholder="Nome da categoria"
             className={inputCls}
           />
-          <Button type="submit" size="sm">
-            Criar
+          <Button type="submit" size="sm">Criar</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewCat(false)}>
+            Cancelar
           </Button>
         </form>
-      </section>
+      )}
 
-      {/* Add Tag */}
-      <section className="bg-surface border border-border rounded-xl p-4">
-        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
-          Nova Tag
-        </h2>
-        <form onSubmit={createTag} className="flex gap-2 items-center">
-          <select
-            value={newTagCatId}
-            onChange={(e) => setNewTagCatId(e.target.value)}
-            className={selectCls}
-          >
-            <option value="">Categoria</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                [{c.type === "income" ? "+" : "-"}] {c.name}
-              </option>
-            ))}
-          </select>
-          <input
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            placeholder="Nome da tag"
-            className={inputCls}
-          />
-          <Button type="submit" size="sm">
-            Criar
-          </Button>
-        </form>
-      </section>
+      {/* Category cards */}
+      <div className="space-y-3">
+        {categories.map((cat) => {
+          const catTags = tags.filter((t) => t.category_id === cat.id);
+          const isAddingTag = newTagCatId === cat.id;
 
-      {/* Category + Tag list */}
-      <div className="space-y-4">
-        {categories.map((cat) => (
-          <div
-            key={cat.id}
-            className="bg-surface border border-border rounded-xl overflow-hidden"
-          >
-            <div className="flex items-center gap-2 px-4 py-2 bg-surface-2 border-b border-border">
-              <span
-                className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                  cat.type === "income"
-                    ? "bg-accent/20 text-accent"
-                    : "bg-danger/20 text-danger"
-                }`}
-              >
-                {cat.type === "income" ? "Entrada" : "Saída"}
-              </span>
-              <span className="text-sm font-medium">{cat.name}</span>
-            </div>
-            <div className="divide-y divide-border">
-              {tags
-                .filter((t) => t.category_id === cat.id)
-                .map((tag) => (
+          return (
+            <div
+              key={cat.id}
+              className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl overflow-hidden"
+            >
+              {/* Category header */}
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-[#252840] border-b border-[#2d3154]">
+                <span
+                  className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                    cat.type === "income"
+                      ? "bg-[#10b981]/20 text-[#10b981]"
+                      : "bg-[#ef4444]/20 text-[#ef4444]"
+                  }`}
+                >
+                  {cat.type === "income" ? "Entrada" : "Saída"}
+                </span>
+                <span className="text-sm font-medium flex-1">{cat.name}</span>
+                <button
+                  onClick={() => setNewTagCatId(isAddingTag ? null : cat.id)}
+                  className="text-xs text-[#6366f1] hover:text-[#6366f1]/80 transition-colors"
+                >
+                  + Tag
+                </button>
+                <button
+                  onClick={() => deleteCategory(cat.id)}
+                  className="text-xs text-[#6b7280] hover:text-[#ef4444] transition-colors ml-2"
+                >
+                  Excluir
+                </button>
+              </div>
+
+              {/* Tags */}
+              <div className="divide-y divide-[#2d3154]">
+                {catTags.map((tag) => (
                   <div key={tag.id} className="flex items-center justify-between px-4 py-2">
                     <span
                       className={`text-sm ${
-                        tag.is_active ? "text-text-primary" : "text-muted line-through"
+                        tag.is_active ? "text-white" : "text-[#6b7280] line-through"
                       }`}
                     >
                       {tag.name}
                     </span>
-                    <button
-                      onClick={() => toggleTag(tag)}
-                      className={`text-xs transition-colors ${
-                        tag.is_active
-                          ? "text-text-secondary hover:text-danger"
-                          : "text-accent hover:text-accent/80"
-                      }`}
-                    >
-                      {tag.is_active ? "Desativar" : "Ativar"}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleTag(tag)}
+                        className={`text-xs transition-colors ${
+                          tag.is_active
+                            ? "text-[#6b7280] hover:text-[#ef4444]"
+                            : "text-[#10b981] hover:text-[#10b981]/80"
+                        }`}
+                      >
+                        {tag.is_active ? "Desativar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => deleteTag(tag)}
+                        className="text-xs text-[#6b7280] hover:text-[#ef4444] transition-colors"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 ))}
-              {tags.filter((t) => t.category_id === cat.id).length === 0 && (
-                <p className="px-4 py-3 text-xs text-muted italic">Nenhuma tag</p>
-              )}
+
+                {catTags.length === 0 && !isAddingTag && (
+                  <p className="px-4 py-3 text-xs text-[#6b7280] italic">Nenhuma tag</p>
+                )}
+
+                {/* Inline new tag form */}
+                {isAddingTag && (
+                  <form
+                    onSubmit={(e) => createTag(e, cat.id)}
+                    className="flex gap-2 items-center px-4 py-2"
+                  >
+                    <input
+                      autoFocus
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      placeholder="Nome da tag"
+                      className={inputCls}
+                    />
+                    <Button type="submit" size="sm">Criar</Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setNewTagCatId(null); setNewTagName(""); }}
+                    >
+                      ✕
+                    </Button>
+                  </form>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
+        {categories.length === 0 && (
+          <p className="text-sm text-[#6b7280] text-center py-8">
+            Nenhuma categoria. Crie uma para começar.
+          </p>
+        )}
       </div>
     </div>
   );

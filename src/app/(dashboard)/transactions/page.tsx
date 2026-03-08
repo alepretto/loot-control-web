@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { TransactionRow } from "@/components/transactions/TransactionRow";
 import { AddTransactionRow } from "@/components/transactions/AddTransactionRow";
+import { ImportModal } from "@/components/transactions/ImportModal";
 import { Button } from "@/components/ui/Button";
 
 export default function TransactionsPage() {
@@ -19,7 +20,14 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ currency: "", date_from: "", date_to: "" });
+  const [showImport, setShowImport] = useState(false);
+  const [filters, setFilters] = useState({
+    currency: "",
+    date_from: "",
+    date_to: "",
+    category_id: "",
+    tag_id: "",
+  });
 
   const load = useCallback(async () => {
     const [txData, cats, tagList] = await Promise.all([
@@ -29,6 +37,8 @@ export default function TransactionsPage() {
         currency: (filters.currency as Currency) || undefined,
         date_from: filters.date_from || undefined,
         date_to: filters.date_to || undefined,
+        category_id: filters.category_id || undefined,
+        tag_id: filters.tag_id || undefined,
       }),
       categoriesApi.list(),
       tagsApi.list(),
@@ -42,19 +52,59 @@ export default function TransactionsPage() {
     load();
   }, [load]);
 
+  function setFilter(key: string, value: string) {
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "category_id") next.tag_id = "";
+      return next;
+    });
+    setPage(1);
+  }
+
   const totalPages = data ? Math.ceil(data.total / 50) : 1;
 
+  const filteredTags = filters.category_id
+    ? tags.filter((t) => t.category_id === filters.category_id)
+    : tags;
+
   const controlCls =
-    "bg-surface-2 border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-primary";
+    "bg-[#252840] border border-[#2d3154] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#6366f1]";
 
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-surface shrink-0">
-        <span className="text-sm font-medium mr-2">Transações</span>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#2d3154] bg-[#1a1d2e] shrink-0 flex-wrap">
+        <span className="text-sm font-medium mr-1">Transações</span>
+
+        <select
+          value={filters.category_id}
+          onChange={(e) => setFilter("category_id", e.target.value)}
+          className={controlCls}
+        >
+          <option value="">Categoria</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.tag_id}
+          onChange={(e) => setFilter("tag_id", e.target.value)}
+          className={controlCls}
+        >
+          <option value="">Tag</option>
+          {filteredTags.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+
         <select
           value={filters.currency}
-          onChange={(e) => { setFilters({ ...filters, currency: e.target.value }); setPage(1); }}
+          onChange={(e) => setFilter("currency", e.target.value)}
           className={controlCls}
         >
           <option value="">Moeda</option>
@@ -62,22 +112,29 @@ export default function TransactionsPage() {
           <option>USD</option>
           <option>EUR</option>
         </select>
+
         <input
           type="date"
           value={filters.date_from}
-          onChange={(e) => { setFilters({ ...filters, date_from: e.target.value }); setPage(1); }}
+          onChange={(e) => setFilter("date_from", e.target.value)}
           className={controlCls}
         />
-        <span className="text-text-secondary text-xs">até</span>
+        <span className="text-[#6b7280] text-xs">até</span>
         <input
           type="date"
           value={filters.date_to}
-          onChange={(e) => { setFilters({ ...filters, date_to: e.target.value }); setPage(1); }}
+          onChange={(e) => setFilter("date_to", e.target.value)}
           className={controlCls}
         />
-        {data && (
-          <span className="ml-auto text-xs text-text-secondary">{data.total} registros</span>
-        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {data && (
+            <span className="text-xs text-[#6b7280]">{data.total} registros</span>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
+            Importar
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -116,11 +173,11 @@ export default function TransactionsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 py-2 border-t border-border shrink-0 bg-surface">
+        <div className="flex items-center justify-center gap-2 py-2 border-t border-[#2d3154] shrink-0 bg-[#1a1d2e]">
           <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
             ← Anterior
           </Button>
-          <span className="text-xs text-text-secondary">
+          <span className="text-xs text-[#6b7280]">
             {page} / {totalPages}
           </span>
           <Button
@@ -132,6 +189,15 @@ export default function TransactionsPage() {
             Próxima →
           </Button>
         </div>
+      )}
+
+      {showImport && (
+        <ImportModal
+          categories={categories}
+          tags={tags}
+          onImported={load}
+          onClose={() => setShowImport(false)}
+        />
       )}
     </div>
   );

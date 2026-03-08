@@ -124,6 +124,7 @@ export const tagsApi = {
 export const transactionsApi = {
   list: (params?: {
     tag_id?: string;
+    category_id?: string;
     currency?: Currency;
     date_from?: string;
     date_to?: string;
@@ -132,6 +133,7 @@ export const transactionsApi = {
   }) => {
     const q = new URLSearchParams();
     if (params?.tag_id) q.set("tag_id", params.tag_id);
+    if (params?.category_id) q.set("category_id", params.category_id);
     if (params?.currency) q.set("currency", params.currency);
     if (params?.date_from) q.set("date_from", params.date_from);
     if (params?.date_to) q.set("date_to", params.date_to);
