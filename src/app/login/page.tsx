@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "login" | "signup";
@@ -82,9 +83,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">
-            <span className="text-primary">Loot</span> Control
-          </h1>
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/logo.png"
+              alt="Loot Control"
+              width={360}
+              height={360}
+              className="rounded-2xl"
+              priority
+            />
+          </div>
           <p className="text-text-secondary text-sm mt-1">Controle financeiro sem atrito</p>
         </div>
 
