@@ -1,0 +1,259 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+type Tab = "login" | "signup";
+type Feedback = { type: "error" | "success"; message: string };
+
+export default function LoginPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [tab, setTab] = useState<Tab>("login");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
+  // Login
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Signup
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setFeedback(null);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setFeedback({ type: "error", message: error.message });
+      setLoading(false);
+    } else {
+      router.push("/transactions");
+    }
+  }
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setFeedback(null);
+
+    if (signupPassword !== signupConfirm) {
+      setFeedback({ type: "error", message: "As senhas não coincidem." });
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: signupEmail,
+      password: signupPassword,
+      options: {
+        data: { username, first_name: firstName, last_name: lastName },
+      },
+    });
+
+    if (error) {
+      setFeedback({ type: "error", message: error.message });
+      setLoading(false);
+      return;
+    }
+
+    if (!data.session) {
+      setFeedback({
+        type: "success",
+        message: "Cadastro realizado! Verifique seu e-mail para confirmar a conta.",
+      });
+      setLoading(false);
+      return;
+    }
+
+    router.push("/transactions");
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0f1117]">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold">
+            <span className="text-indigo-500">Loot</span> Control
+          </h1>
+          <p className="text-[#94a3b8] text-sm mt-1">Controle financeiro sem atrito</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex mb-4 bg-[#1a1d2e] rounded-xl border border-[#2d3154] p-1">
+          {(["login", "signup"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setFeedback(null); }}
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                tab === t
+                  ? "bg-indigo-500 text-white"
+                  : "text-[#6b7280] hover:text-[#94a3b8]"
+              }`}
+            >
+              {t === "login" ? "Entrar" : "Cadastrar"}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-[#1a1d2e] rounded-xl border border-[#2d3154] p-6">
+          {/* Feedback */}
+          {feedback && (
+            <div
+              className={`mb-4 text-xs rounded-lg px-3 py-2 border ${
+                feedback.type === "error"
+                  ? "text-red-400 bg-red-500/10 border-red-500/20"
+                  : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+              }`}
+            >
+              {feedback.message}
+            </div>
+          )}
+
+          {tab === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="seu@email.com"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Senha">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className={inputClass}
+                />
+              </Field>
+
+              <SubmitButton loading={loading} label="Entrar" loadingLabel="Entrando..." />
+            </form>
+          ) : (
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Nome">
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    placeholder="João"
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Sobrenome">
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    placeholder="Silva"
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Username">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  placeholder="joaosilva"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  required
+                  placeholder="seu@email.com"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Senha">
+                <input
+                  type="password"
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  placeholder="mínimo 6 caracteres"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Confirmar senha">
+                <input
+                  type="password"
+                  value={signupConfirm}
+                  onChange={(e) => setSignupConfirm(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className={inputClass}
+                />
+              </Field>
+
+              <SubmitButton loading={loading} label="Criar conta" loadingLabel="Criando..." />
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const inputClass =
+  "w-full bg-[#252840] border border-[#2d3154] rounded-lg px-3 py-2.5 text-sm text-[#f1f5f9] placeholder:text-[#6b7280] focus:outline-none focus:border-indigo-500 transition-colors";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs text-[#94a3b8] mb-1.5 uppercase tracking-wider">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SubmitButton({
+  loading,
+  label,
+  loadingLabel,
+}: {
+  loading: boolean;
+  label: string;
+  loadingLabel: string;
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+    >
+      {loading ? loadingLabel : label}
+    </button>
+  );
+}
