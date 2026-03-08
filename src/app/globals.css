@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #070B11;
+  color: #e6edf3;
+}
+
+/* Spreadsheet-style table */
+.sheet-table {
+  @apply w-full border-collapse;
+}
+
+.sheet-table th {
+  @apply bg-surface-2 text-muted text-xs font-medium uppercase tracking-wider px-3 py-2 text-left border-b border-r border-border sticky top-0 z-10;
+}
+
+.sheet-table td {
+  @apply px-3 py-1.5 text-sm text-text-primary border-b border-r border-border;
+}
+
+.sheet-table tr:hover td {
+  @apply bg-surface-2;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d0f12; }
+::-webkit-scrollbar-thumb { background: #2a2d35; border-radius: 3px; }
