@@ -35,11 +35,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export type CategoryType = "outcome" | "income";
 export type Currency = "BRL" | "USD" | "EUR";
 
-export interface Category {
+export interface TagFamily {
   id: string;
   user_id: string;
   name: string;
-  type: CategoryType;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  user_id: string;
+  family_id: string | null;
+  name: string;
   created_at: string;
   updated_at: string;
 }
@@ -48,6 +56,7 @@ export interface Tag {
   id: string;
   user_id: string;
   category_id: string;
+  type: CategoryType;
   name: string;
   is_active: boolean;
   created_at: string;
@@ -94,28 +103,38 @@ export const usersApi = {
   me: () => request<User>("/users/me"),
 };
 
+// ─── Tag Families ─────────────────────────────────────────────────────────────
+export const tagFamiliesApi = {
+  list: () => request<TagFamily[]>("/finance/tag-families/"),
+  create: (data: { name: string }) =>
+    request<TagFamily>("/finance/tag-families/", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<{ name: string }>) =>
+    request<TagFamily>(`/finance/tag-families/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string) => request<void>(`/finance/tag-families/${id}`, { method: "DELETE" }),
+};
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const categoriesApi = {
-  list: (type?: CategoryType) =>
-    request<Category[]>(`/finance/categories/${type ? `?type=${type}` : ""}`),
-  create: (data: { name: string; type: CategoryType }) =>
+  list: () => request<Category[]>("/finance/categories/"),
+  create: (data: { name: string; family_id?: string }) =>
     request<Category>("/finance/categories/", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; type: CategoryType }>) =>
+  update: (id: string, data: Partial<{ name: string; family_id: string | null }>) =>
     request<Category>(`/finance/categories/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/finance/categories/${id}`, { method: "DELETE" }),
 };
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 export const tagsApi = {
-  list: (params?: { category_id?: string; is_active?: boolean }) => {
+  list: (params?: { category_id?: string; type?: CategoryType; is_active?: boolean }) => {
     const q = new URLSearchParams();
     if (params?.category_id) q.set("category_id", params.category_id);
+    if (params?.type) q.set("type", params.type);
     if (params?.is_active !== undefined) q.set("is_active", String(params.is_active));
     return request<Tag[]>(`/finance/tags/?${q}`);
   },
-  create: (data: { name: string; category_id: string }) =>
+  create: (data: { name: string; category_id: string; type: CategoryType }) =>
     request<Tag>("/finance/tags/", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; is_active: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; type: CategoryType; is_active: boolean }>) =>
     request<Tag>(`/finance/tags/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/finance/tags/${id}`, { method: "DELETE" }),
 };
@@ -125,6 +144,7 @@ export const transactionsApi = {
   list: (params?: {
     tag_id?: string;
     category_id?: string;
+    family_id?: string;
     currency?: Currency;
     date_from?: string;
     date_to?: string;
@@ -134,6 +154,7 @@ export const transactionsApi = {
     const q = new URLSearchParams();
     if (params?.tag_id) q.set("tag_id", params.tag_id);
     if (params?.category_id) q.set("category_id", params.category_id);
+    if (params?.family_id) q.set("family_id", params.family_id);
     if (params?.currency) q.set("currency", params.currency);
     if (params?.date_from) q.set("date_from", params.date_from);
     if (params?.date_to) q.set("date_to", params.date_to);

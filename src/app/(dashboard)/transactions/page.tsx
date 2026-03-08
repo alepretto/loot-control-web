@@ -6,8 +6,10 @@ import {
   Currency,
   PaginatedTransactions,
   Tag,
+  TagFamily,
   categoriesApi,
   tagsApi,
+  tagFamiliesApi,
   transactionsApi,
 } from "@/lib/api";
 import { TransactionRow } from "@/components/transactions/TransactionRow";
@@ -19,33 +21,38 @@ export default function TransactionsPage() {
   const [data, setData] = useState<PaginatedTransactions | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [families, setFamilies] = useState<TagFamily[]>([]);
   const [page, setPage] = useState(1);
   const [showImport, setShowImport] = useState(false);
   const [filters, setFilters] = useState({
     currency: "",
     date_from: "",
     date_to: "",
+    family_id: "",
     category_id: "",
     tag_id: "",
   });
 
   const load = useCallback(async () => {
-    const [txData, cats, tagList] = await Promise.all([
+    const [txData, cats, tagList, familyList] = await Promise.all([
       transactionsApi.list({
         page,
         page_size: 50,
         currency: (filters.currency as Currency) || undefined,
         date_from: filters.date_from || undefined,
         date_to: filters.date_to || undefined,
+        family_id: filters.family_id || undefined,
         category_id: filters.category_id || undefined,
         tag_id: filters.tag_id || undefined,
       }),
       categoriesApi.list(),
       tagsApi.list(),
+      tagFamiliesApi.list(),
     ]);
     setData(txData);
     setCategories(cats);
     setTags(tagList);
+    setFamilies(familyList);
   }, [page, filters]);
 
   useEffect(() => {
@@ -55,6 +62,7 @@ export default function TransactionsPage() {
   function setFilter(key: string, value: string) {
     setFilters((prev) => {
       const next = { ...prev, [key]: value };
+      if (key === "family_id") { next.category_id = ""; next.tag_id = ""; }
       if (key === "category_id") next.tag_id = "";
       return next;
     });
@@ -63,8 +71,14 @@ export default function TransactionsPage() {
 
   const totalPages = data ? Math.ceil(data.total / 50) : 1;
 
+  const filteredCategories = filters.family_id
+    ? categories.filter((c) => c.family_id === filters.family_id)
+    : categories;
+
   const filteredTags = filters.category_id
     ? tags.filter((t) => t.category_id === filters.category_id)
+    : filters.family_id
+    ? tags.filter((t) => filteredCategories.some((c) => c.id === t.category_id))
     : tags;
 
   const controlCls =
@@ -77,12 +91,25 @@ export default function TransactionsPage() {
         <span className="text-sm font-medium mr-1">Transações</span>
 
         <select
+          value={filters.family_id}
+          onChange={(e) => setFilter("family_id", e.target.value)}
+          className={controlCls}
+        >
+          <option value="">Família</option>
+          {families.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+
+        <select
           value={filters.category_id}
           onChange={(e) => setFilter("category_id", e.target.value)}
           className={controlCls}
         >
           <option value="">Categoria</option>
-          {categories.map((c) => (
+          {filteredCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
@@ -119,7 +146,7 @@ export default function TransactionsPage() {
           onChange={(e) => setFilter("date_from", e.target.value)}
           className={controlCls}
         />
-        <span className="text-[#6b7280] text-xs">até</span>
+        <span className="text-muted text-xs">até</span>
         <input
           type="date"
           value={filters.date_to}
@@ -129,7 +156,7 @@ export default function TransactionsPage() {
 
         <div className="ml-auto flex items-center gap-2">
           {data && (
-            <span className="text-xs text-[#6b7280]">{data.total} registros</span>
+            <span className="text-xs text-muted">{data.total} registros</span>
           )}
           <Button variant="ghost" size="sm" onClick={() => setShowImport(true)}>
             Importar
@@ -177,7 +204,7 @@ export default function TransactionsPage() {
           <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
             ← Anterior
           </Button>
-          <span className="text-xs text-[#6b7280]">
+          <span className="text-xs text-muted">
             {page} / {totalPages}
           </span>
           <Button

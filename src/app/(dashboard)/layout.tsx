@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
-  { href: "/transactions", label: "Transações" },
-  { href: "/tags", label: "Tags" },
   { href: "/summary", label: "Resumo" },
   { href: "/investments", label: "Investimentos" },
+  { href: "/transactions", label: "Transações" },
+  { href: "/tags", label: "Tags" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +25,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col">
       <nav className="h-16 bg-background border-b border-border flex items-center px-4 gap-6 shrink-0">
         <Link href="/transactions" className="flex items-center gap-2 mr-4">
-          <Image src="/logo.png" alt="Loot Control" width={56} height={56} className="rounded-lg" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/nav-icon.png" alt="Loot Control" style={{ width: 52, height: 52, objectFit: "contain" }} />
         </Link>
         {navItems.map((item) => (
           <Link

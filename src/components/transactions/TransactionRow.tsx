@@ -19,7 +19,7 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
 
   const tag = tags.find((t) => t.id === transaction.tag_id);
   const category = categories.find((c) => c.id === tag?.category_id);
-  const isIncome = category?.type === "income";
+  const isIncome = tag?.type === "income";
 
   async function save() {
     setSaving(true);

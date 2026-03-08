@@ -9,26 +9,46 @@ interface Props {
   onCreated: () => void;
 }
 
-const EMPTY = {
-  date_transaction: new Date().toISOString().slice(0, 16),
-  type: "outcome" as CategoryType,
-  category_id: "",
-  tag_id: "",
-  value: "",
-  currency: "BRL" as Currency,
-  quantity: "",
-  symbol: "",
-  index_rate: "",
-  index: "",
-};
+function brazilDatetime(): string {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function makeEmpty() {
+  return {
+    date_transaction: brazilDatetime(),
+    type: "outcome" as CategoryType,
+    category_id: "",
+    tag_id: "",
+    value: "",
+    currency: "BRL" as Currency,
+    quantity: "",
+    symbol: "",
+    index_rate: "",
+    index: "",
+  };
+}
 
 export function AddTransactionRow({ categories, tags, onCreated }: Props) {
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState(makeEmpty);
   const [saving, setSaving] = useState(false);
 
-  const filteredCategories = categories.filter((c) => c.type === form.type);
+  // type filtra tags; category_id filtra dentro das tags já filtradas
   const filteredTags = tags.filter(
-    (t) => t.category_id === form.category_id && t.is_active
+    (t) => t.type === form.type && (form.category_id === "" || t.category_id === form.category_id)
+  );
+  const filteredCategories = categories.filter((c) =>
+    tags.some((t) => t.type === form.type && t.category_id === c.id)
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,7 +66,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         index_rate: form.index_rate ? parseFloat(form.index_rate) : undefined,
         index: form.index || undefined,
       });
-      setForm(EMPTY);
+      setForm(makeEmpty());
       onCreated();
     } finally {
       setSaving(false);
@@ -69,6 +89,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         />
       </td>
       <td className="px-3 py-1.5">
+        {/* Tipo: filtra categorias e tags disponíveis */}
         <select
           value={form.type}
           onChange={(e) =>
@@ -81,6 +102,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         </select>
       </td>
       <td className="px-3 py-1.5">
+        {/* Categoria: mostra só categorias que têm tags do tipo selecionado */}
         <select
           value={form.category_id}
           onChange={(e) => setForm({ ...form, category_id: e.target.value, tag_id: "" })}
@@ -88,9 +110,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         >
           <option value="">Categoria</option>
           {filteredCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </td>
@@ -103,9 +123,7 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         >
           <option value="">Tag</option>
           {filteredTags.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
+            <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>
       </td>
@@ -130,40 +148,24 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         </select>
       </td>
       <td className="px-3 py-1.5">
-        <input
-          type="number"
-          placeholder="—"
-          value={form.quantity}
+        <input type="number" placeholder="—" value={form.quantity}
           onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-          className={`${inputCls} text-right`}
-        />
+          className={`${inputCls} text-right`} />
       </td>
       <td className="px-3 py-1.5">
-        <input
-          type="text"
-          placeholder="—"
-          value={form.symbol}
+        <input type="text" placeholder="—" value={form.symbol}
           onChange={(e) => setForm({ ...form, symbol: e.target.value })}
-          className={inputCls}
-        />
+          className={inputCls} />
       </td>
       <td className="px-3 py-1.5">
-        <input
-          type="number"
-          placeholder="—"
-          value={form.index_rate}
+        <input type="number" placeholder="—" value={form.index_rate}
           onChange={(e) => setForm({ ...form, index_rate: e.target.value })}
-          className={`${inputCls} text-right`}
-        />
+          className={`${inputCls} text-right`} />
       </td>
       <td className="px-3 py-1.5">
-        <input
-          type="text"
-          placeholder="—"
-          value={form.index}
+        <input type="text" placeholder="—" value={form.index}
           onChange={(e) => setForm({ ...form, index: e.target.value })}
-          className={inputCls}
-        />
+          className={inputCls} />
       </td>
       <td className="px-3 py-1.5">
         <button
