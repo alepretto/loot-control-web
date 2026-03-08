@@ -33,7 +33,10 @@ export default function LoginPage() {
     setLoading(true);
     setFeedback(null);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       setFeedback({ type: "error", message: error.message });
       setLoading(false);
@@ -70,7 +73,8 @@ export default function LoginPage() {
     if (!data.session) {
       setFeedback({
         type: "success",
-        message: "Cadastro realizado! Verifique seu e-mail para confirmar a conta.",
+        message:
+          "Cadastro realizado! Verifique seu e-mail para confirmar a conta.",
       });
       setLoading(false);
       return;
@@ -80,20 +84,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div
+      className="min-h-screen flex items-start justify-center"
+      style={{ backgroundColor: "#070B11" }}
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
             <Image
               src="/logo.png"
               alt="Loot Control"
-              width={360}
-              height={360}
+              width={600}
+              height={600}
               className="rounded-2xl"
               priority
             />
           </div>
-          <p className="text-text-secondary text-sm mt-1">Controle financeiro sem atrito</p>
+          <p className="text-text-secondary text-sm mt-1">
+            Controle financeiro sem atrito
+          </p>
         </div>
 
         {/* Tabs */}
@@ -101,7 +110,10 @@ export default function LoginPage() {
           {(["login", "signup"] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => { setTab(t); setFeedback(null); }}
+              onClick={() => {
+                setTab(t);
+                setFeedback(null);
+              }}
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                 tab === t
                   ? "bg-primary text-white"
@@ -151,7 +163,11 @@ export default function LoginPage() {
                 />
               </Field>
 
-              <SubmitButton loading={loading} label="Entrar" loadingLabel="Entrando..." />
+              <SubmitButton
+                loading={loading}
+                label="Entrar"
+                loadingLabel="Entrando..."
+              />
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">
@@ -223,7 +239,11 @@ export default function LoginPage() {
                 />
               </Field>
 
-              <SubmitButton loading={loading} label="Criar conta" loadingLabel="Criando..." />
+              <SubmitButton
+                loading={loading}
+                label="Criar conta"
+                loadingLabel="Criando..."
+              />
             </form>
           )}
         </div>
@@ -235,7 +255,13 @@ export default function LoginPage() {
 const inputClass =
   "w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-muted focus:outline-none focus:border-primary transition-colors";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="block text-xs text-text-secondary mb-1.5 uppercase tracking-wider">

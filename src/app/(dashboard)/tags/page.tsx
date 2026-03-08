@@ -58,9 +58,9 @@ export default function TagsPage() {
   }
 
   const inputCls =
-    "flex-1 bg-[#0f1117] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-white placeholder:text-[#6b7280] focus:outline-none focus:border-[#6366f1]";
+    "flex-1 bg-background border border-border rounded px-2 py-1.5 text-sm text-text-primary placeholder:text-muted focus:outline-none";
   const selectCls =
-    "bg-[#0f1117] border border-[#2d3154] rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#6366f1]";
+    "bg-background border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none";
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -76,7 +76,7 @@ export default function TagsPage() {
       {showNewCat && (
         <form
           onSubmit={createCategory}
-          className="flex gap-2 items-center bg-[#1a1d2e] border border-[#2d3154] rounded-xl p-3"
+          className="flex gap-2 items-center bg-surface border border-border rounded-xl p-3"
         >
           <select
             value={newCatType}
@@ -109,15 +109,15 @@ export default function TagsPage() {
           return (
             <div
               key={cat.id}
-              className="bg-[#1a1d2e] border border-[#2d3154] rounded-xl overflow-hidden"
+              className="bg-surface border border-border rounded-xl overflow-hidden"
             >
               {/* Category header */}
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-[#252840] border-b border-[#2d3154]">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-2 border-b border-border">
                 <span
                   className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     cat.type === "income"
-                      ? "bg-[#10b981]/20 text-[#10b981]"
-                      : "bg-[#ef4444]/20 text-[#ef4444]"
+                      ? "bg-accent/20 text-accent"
+                      : "bg-danger/20 text-danger"
                   }`}
                 >
                   {cat.type === "income" ? "Entrada" : "Saída"}
@@ -125,25 +125,25 @@ export default function TagsPage() {
                 <span className="text-sm font-medium flex-1">{cat.name}</span>
                 <button
                   onClick={() => setNewTagCatId(isAddingTag ? null : cat.id)}
-                  className="text-xs text-[#6366f1] hover:text-[#6366f1]/80 transition-colors"
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
                 >
                   + Tag
                 </button>
                 <button
                   onClick={() => deleteCategory(cat.id)}
-                  className="text-xs text-[#6b7280] hover:text-[#ef4444] transition-colors ml-2"
+                  className="text-xs text-muted hover:text-danger transition-colors ml-2"
                 >
                   Excluir
                 </button>
               </div>
 
               {/* Tags */}
-              <div className="divide-y divide-[#2d3154]">
+              <div className="divide-y divide-border">
                 {catTags.map((tag) => (
                   <div key={tag.id} className="flex items-center justify-between px-4 py-2">
                     <span
                       className={`text-sm ${
-                        tag.is_active ? "text-white" : "text-[#6b7280] line-through"
+                        tag.is_active ? "text-text-primary" : "text-muted line-through"
                       }`}
                     >
                       {tag.name}
@@ -153,15 +153,15 @@ export default function TagsPage() {
                         onClick={() => toggleTag(tag)}
                         className={`text-xs transition-colors ${
                           tag.is_active
-                            ? "text-[#6b7280] hover:text-[#ef4444]"
-                            : "text-[#10b981] hover:text-[#10b981]/80"
+                            ? "text-muted hover:text-danger"
+                            : "text-accent hover:text-accent/80"
                         }`}
                       >
                         {tag.is_active ? "Desativar" : "Ativar"}
                       </button>
                       <button
                         onClick={() => deleteTag(tag)}
-                        className="text-xs text-[#6b7280] hover:text-[#ef4444] transition-colors"
+                        className="text-xs text-muted hover:text-danger transition-colors"
                       >
                         Excluir
                       </button>
@@ -170,7 +170,7 @@ export default function TagsPage() {
                 ))}
 
                 {catTags.length === 0 && !isAddingTag && (
-                  <p className="px-4 py-3 text-xs text-[#6b7280] italic">Nenhuma tag</p>
+                  <p className="px-4 py-3 text-xs text-muted italic">Nenhuma tag</p>
                 )}
 
                 {/* Inline new tag form */}
@@ -203,7 +203,7 @@ export default function TagsPage() {
         })}
 
         {categories.length === 0 && (
-          <p className="text-sm text-[#6b7280] text-center py-8">
+          <p className="text-sm text-muted text-center py-8">
             Nenhuma categoria. Crie uma para começar.
           </p>
         )}

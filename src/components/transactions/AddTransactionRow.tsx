@@ -54,9 +54,9 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
   }
 
   const inputCls =
-    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none focus:border-primary w-full";
+    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none w-full";
   const selectCls =
-    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none focus:border-primary";
+    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none";
 
   return (
     <tr className="bg-accent/5 border-t-2 border-accent/30">

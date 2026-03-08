@@ -10,11 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0d0f12",
-        surface: "#141619",
-        "surface-2": "#1c1f24",
-        "surface-3": "#23272e",
-        border: "#2a2d35",
+        background: "#070B11",
+        surface: "#0E1218",
+        "surface-2": "#141A22",
+        "surface-3": "#1C2330",
+        border: "#20282F",
         primary: "#2563eb",
         "primary-hover": "#1d4ed8",
         accent: "#22c55e",

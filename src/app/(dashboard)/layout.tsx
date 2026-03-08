@@ -24,12 +24,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="h-12 bg-surface border-b border-border flex items-center px-4 gap-6 shrink-0">
+      <nav className="h-16 bg-background border-b border-border flex items-center px-4 gap-6 shrink-0">
         <Link href="/transactions" className="flex items-center gap-2 mr-4">
-          <Image src="/logo.png" alt="Loot Control" width={28} height={19} className="rounded" />
-          <span className="text-sm font-bold">
-            <span className="text-primary">Loot</span> Control
-          </span>
+          <Image src="/logo.png" alt="Loot Control" width={56} height={56} className="rounded-lg" />
         </Link>
         {navItems.map((item) => (
           <Link

@@ -68,12 +68,12 @@ export default function TransactionsPage() {
     : tags;
 
   const controlCls =
-    "bg-[#252840] border border-[#2d3154] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#6366f1]";
+    "bg-background border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none";
 
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#2d3154] bg-[#1a1d2e] shrink-0 flex-wrap">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-surface shrink-0 flex-wrap">
         <span className="text-sm font-medium mr-1">Transações</span>
 
         <select
@@ -173,7 +173,7 @@ export default function TransactionsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 py-2 border-t border-[#2d3154] shrink-0 bg-[#1a1d2e]">
+        <div className="flex items-center justify-center gap-2 py-2 border-t border-border shrink-0 bg-surface">
           <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
             ← Anterior
           </Button>
