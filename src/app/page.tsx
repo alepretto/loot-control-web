@@ -4,16 +4,26 @@ import Image from "next/image";
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-text-primary overflow-x-hidden">
-
       {/* ── Nav ─────────────────────────────────────────── */}
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-border backdrop-blur-md bg-background/80">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Loot Control" width={28} height={28} className="rounded-lg" />
-            <span className="font-bold text-sm tracking-tight">Loot Control</span>
+            <Image
+              src="/nav-icon.png"
+              alt="Loot Control"
+              width={50}
+              height={50}
+              className="rounded-lg"
+            />
+            <span className="font-bold text-xl tracking-tight">
+              Loot Control
+            </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-muted hover:text-text-primary transition-colors">
+            <Link
+              href="/login"
+              className="text-xm text-muted hover:text-text-primary transition-colors"
+            >
               Entrar
             </Link>
             <Link
@@ -28,7 +38,7 @@ export default function LandingPage() {
 
       {/* ── Hero ────────────────────────────────────────── */}
       <section className="pt-28 pb-24 px-6 text-center relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px]  rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-sm mx-auto mb-10">
           <Image
@@ -97,7 +107,10 @@ export default function LandingPage() {
                 text: "Seus investimentos ficam em outro lugar, desconectados das suas despesas.",
               },
             ].map(({ icon, text }) => (
-              <div key={text} className="bg-surface border border-border rounded-xl p-5 flex gap-4">
+              <div
+                key={text}
+                className="bg-surface border border-border rounded-xl p-5 flex gap-4"
+              >
                 <span className="text-2xl mt-0.5 shrink-0">{icon}</span>
                 <p className="text-sm text-muted leading-relaxed">{text}</p>
               </div>
@@ -110,8 +123,12 @@ export default function LandingPage() {
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 space-y-3">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">O que você ganha</p>
-            <h2 className="text-3xl font-bold">Tudo que você precisa, nada do que você não precisa</h2>
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              O que você ganha
+            </p>
+            <h2 className="text-3xl font-bold">
+              Tudo que você precisa, nada do que você não precisa
+            </h2>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -163,7 +180,9 @@ export default function LandingPage() {
                 key={title}
                 className="bg-surface border border-border rounded-xl p-6 space-y-3 hover:border-primary/40 transition-colors"
               >
-                <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center text-xl`}>
+                <div
+                  className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center text-xl`}
+                >
                   {icon}
                 </div>
                 <h3 className={`font-semibold text-sm ${accent}`}>{title}</h3>
@@ -178,7 +197,9 @@ export default function LandingPage() {
       <section id="como-funciona" className="py-24 px-6 border-t border-border">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16 space-y-3">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">Como funciona</p>
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              Como funciona
+            </p>
             <h2 className="text-3xl font-bold">Simples do começo ao fim</h2>
           </div>
 
@@ -251,7 +272,8 @@ export default function LandingPage() {
             </span>
           </h2>
           <p className="text-muted text-base">
-            Crie sua conta em segundos e comece a ter clareza sobre o seu dinheiro.
+            Crie sua conta em segundos e comece a ter clareza sobre o seu
+            dinheiro.
           </p>
           <Link
             href="/login"
@@ -259,7 +281,9 @@ export default function LandingPage() {
           >
             Criar conta grátis →
           </Link>
-          <p className="text-xs text-muted">Sem cartão de crédito. Sem pegadinha.</p>
+          <p className="text-xs text-muted">
+            Sem cartão de crédito. Sem pegadinha.
+          </p>
         </div>
       </section>
 
@@ -267,10 +291,18 @@ export default function LandingPage() {
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Loot Control" width={20} height={20} className="rounded-md opacity-60" />
+            <Image
+              src="/logo.png"
+              alt="Loot Control"
+              width={20}
+              height={20}
+              className="rounded-md opacity-60"
+            />
             <span className="text-xs text-muted">Loot Control</span>
           </div>
-          <p className="text-xs text-muted">Feito para quem quer ter controle de verdade, sem atrito.</p>
+          <p className="text-xs text-muted">
+            Feito para quem quer ter controle de verdade, sem atrito.
+          </p>
           <Link href="/login" className="text-xs text-primary hover:underline">
             Entrar na conta →
           </Link>

@@ -32,6 +32,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface JobStatus {
+  id: string;
+  name: string;
+  description: string;
+  schedule: string;
+  next_run_time: string | null;
+  last_run_date: string | null;
+}
+
 export type CategoryType = "outcome" | "income";
 export type Currency = "BRL" | "USD" | "EUR";
 
@@ -90,6 +100,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
+  role: string;
   first_name: string;
   last_name: string;
   telegram_id: string | null;
@@ -179,4 +190,62 @@ export const transactionsApi = {
       body: JSON.stringify(data),
     }),
   delete: (id: string) => request<void>(`/finance/transactions/${id}`, { method: "DELETE" }),
+};
+
+// ─── Market Data ──────────────────────────────────────────────────────────────
+export interface ExchangeRates {
+  USD: number | null;
+  EUR: number | null;
+}
+
+export interface AssetPriceItem {
+  symbol: string;
+  price: number;
+  currency: string;
+}
+
+export interface ExchangeRateHistoryItem {
+  date: string;
+  USD: number | null;
+  EUR: number | null;
+}
+
+export interface AssetPriceHistoryItem {
+  date: string;
+  symbol: string;
+  price: number;
+  currency: string;
+}
+
+export interface CdiRateItem {
+  date: string;
+  rate_pct: number;
+}
+
+export const marketDataApi = {
+  exchangeRates: () => request<ExchangeRates>("/finance/market-data/exchange-rates/latest"),
+  assetPrices: () => request<{ prices: AssetPriceItem[] }>("/finance/market-data/asset-prices/latest"),
+  exchangeRateHistory: () => request<ExchangeRateHistoryItem[]>("/finance/market-data/exchange-rates/history"),
+  assetPriceHistory: () => request<AssetPriceHistoryItem[]>("/finance/market-data/asset-prices/history"),
+  cdiHistory: (dateFrom: string, dateTo: string) =>
+    request<CdiRateItem[]>(`/finance/market-data/cdi/history?date_from=${dateFrom}&date_to=${dateTo}`),
+};
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+export interface HistoricalLoadResult {
+  exchange_rates: { loaded: number; pairs: string[] };
+  crypto:         { loaded: number; symbols: string[] };
+  br_stocks:      { loaded: number; tickers: string[] };
+  us_stocks:      { loaded: number; tickers: string[] };
+}
+
+export const adminApi = {
+  listJobs: () => request<{ jobs: JobStatus[] }>("/admin/jobs"),
+  runJob: (jobId: string) =>
+    request<{ job_id: string; status: string; message: string }>(`/admin/jobs/${jobId}/run`, { method: "POST" }),
+  historicalLoad: (dateFrom: string, dateTo: string) =>
+    request<HistoricalLoadResult>("/admin/historical-load", {
+      method: "POST",
+      body: JSON.stringify({ date_from: dateFrom, date_to: dateTo }),
+    }),
 };
