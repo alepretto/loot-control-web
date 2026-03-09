@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
@@ -41,7 +42,7 @@ export default function LoginPage() {
       setFeedback({ type: "error", message: error.message });
       setLoading(false);
     } else {
-      router.push("/transactions");
+      router.push("/summary");
     }
   }
 
@@ -84,11 +85,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-start justify-center"
-      style={{ backgroundColor: "#070B11" }}
-    >
+    <div className="min-h-screen flex items-start justify-center bg-background">
       <div className="w-full max-w-sm">
+        {/* Back to home */}
+        <div className="pt-6 pb-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text-primary transition-colors"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <path d="M19 12H5M12 5l-7 7 7 7" />
+            </svg>
+            Voltar ao início
+          </Link>
+        </div>
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
             <Image
