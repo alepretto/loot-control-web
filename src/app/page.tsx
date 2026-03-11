@@ -193,6 +193,92 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Hierarquia ──────────────────────────────────── */}
+      <section className="py-24 px-6 border-t border-border">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14 space-y-3">
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              Organização inteligente
+            </p>
+            <h2 className="text-3xl font-bold">
+              Um sistema que se adapta à sua vida
+            </h2>
+            <p className="text-muted text-base max-w-xl mx-auto leading-relaxed">
+              Você organiza do jeito que faz sentido pra você — não pra uma planilha genérica.
+            </p>
+          </div>
+
+          {/* 3-level visual */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-0 mb-10">
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-primary/10 border border-primary/30 rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-primary font-bold text-sm mb-1">Família</p>
+                <p className="text-muted text-xs leading-snug">O grupo maior<br />(ex: Moradia, Alimentação)</p>
+              </div>
+            </div>
+            <div className="text-muted text-2xl sm:shrink-0 rotate-90 sm:rotate-0">→</div>
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-accent/10 border border-accent/30 rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-accent font-bold text-sm mb-1">Categoria</p>
+                <p className="text-muted text-xs leading-snug">Subdivide a família<br />(ex: Aluguel, Mercado)</p>
+              </div>
+            </div>
+            <div className="text-muted text-2xl sm:shrink-0 rotate-90 sm:rotate-0">→</div>
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-surface-2 border border-border rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-text-primary font-bold text-sm mb-1">Tag</p>
+                <p className="text-muted text-xs leading-snug">O detalhe final — define se é Gasto ou Receita</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Concrete example */}
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">Exemplo real</p>
+            <div className="space-y-3 font-mono text-sm">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">💰 Renda</span>
+                  {" → "}
+                  <span className="text-text-secondary">Salário</span>
+                  {" → "}
+                  <span className="text-text-primary">Salário CLT</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-accent bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Receita
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">🏠 Moradia</span>
+                  {" → "}
+                  <span className="text-text-secondary">Aluguel</span>
+                  {" → "}
+                  <span className="text-text-primary">Mensalidade</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-danger bg-danger/10 border border-danger/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Gasto
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">🍔 Alimentação</span>
+                  {" → "}
+                  <span className="text-text-secondary">Mercado</span>
+                  {" → "}
+                  <span className="text-text-primary">Feira</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-danger bg-danger/10 border border-danger/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Gasto
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Como funciona ───────────────────────────────── */}
       <section id="como-funciona" className="py-24 px-6 border-t border-border">
         <div className="max-w-3xl mx-auto">
@@ -207,23 +293,23 @@ export default function LandingPage() {
             {[
               {
                 step: "01",
-                title: "Monte sua estrutura uma vez",
-                desc: "Crie suas famílias de gastos (ex: Moradia, Lazer), categorias e tags. Feito em minutos, serve pra sempre.",
+                title: "Crie sua estrutura uma única vez",
+                desc: "Na aba Tags, crie suas Famílias (ex: Moradia, Alimentação), depois suas Categorias e finalmente as Tags com o tipo (Gasto ou Receita). Leva menos de 10 minutos e você nunca mais precisa mudar.",
               },
               {
                 step: "02",
-                title: "Registre no dia a dia",
-                desc: "Abra, clique na linha nova da tabela e registre. Data, categoria, valor — é isso. Sem formulários intermináveis.",
+                title: "Registre em menos de 5 segundos",
+                desc: "Abra Transações, clique na primeira linha e preencha: data, tag e valor. Pronto. Sem formulários, sem menus escondidos, sem complicação.",
               },
               {
                 step: "03",
-                title: "Entenda seus padrões",
-                desc: "No fim do mês, abra o Resumo. Veja onde está gastando mais, quanto da sua renda vai pra cada grupo e se melhorou ou piorou em relação ao mês anterior.",
+                title: "Importe o que já tem",
+                desc: "Tinha dados em planilha? Baixe nosso modelo CSV, cole seus dados e faça upload. Meses de histórico importados em minutos.",
               },
               {
                 step: "04",
-                title: "Acompanhe seus investimentos",
-                desc: "Registre aportes e resgates junto com suas transações normais. O painel de investimentos mostra sua evolução e alocação atual.",
+                title: "Veja o panorama completo",
+                desc: "No Resumo, acompanhe entradas, saídas e taxa de poupança por mês. Nos Investimentos, veja o crescimento da sua carteira com gráficos automáticos.",
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="flex gap-5 items-start">
