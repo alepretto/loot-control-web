@@ -171,6 +171,7 @@ export default function TransactionsPage() {
             <tr>
               <th>Data</th>
               <th>Tipo</th>
+              <th>Família</th>
               <th>Categoria</th>
               <th>Tag</th>
               <th className="text-right">Valor</th>
@@ -183,7 +184,7 @@ export default function TransactionsPage() {
             </tr>
           </thead>
           <tbody>
-            <AddTransactionRow categories={categories} tags={tags} onCreated={load} />
+            <AddTransactionRow families={families} categories={categories} tags={tags} onCreated={load} />
             {data?.items.map((tx) => (
               <TransactionRow
                 key={tx.id}

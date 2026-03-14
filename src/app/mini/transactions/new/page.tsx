@@ -43,9 +43,18 @@ export default function NewTransactionPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedTagId, setSelectedTagId] = useState("");
-  const [date, setDate] = useState(() => {
-    // Default to today in São Paulo timezone
-    return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  const [date, setDate] = useState(() =>
+    new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo" }).format(new Date())
+  );
+  const [time, setTime] = useState(() => {
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "America/Sao_Paulo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+    return `${get("hour")}:${get("minute")}`;
   });
   const [currency, setCurrency] = useState<Currency>("BRL");
   const [submitting, setSubmitting] = useState(false);
@@ -116,7 +125,7 @@ export default function NewTransactionPage() {
     try {
       await transactionsApi.create({
         tag_id: selectedTagId,
-        date_transaction: new Date(date + "T12:00:00").toISOString(),
+        date_transaction: new Date(`${date}T${time}:00`).toISOString(),
         value,
         currency,
       });
@@ -241,16 +250,25 @@ export default function NewTransactionPage() {
           )}
         </div>
 
-        {/* Date */}
+        {/* Date + Time */}
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted mb-2">Data</p>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
-          />
+          <p className="text-xs uppercase tracking-wider text-muted mb-2">Data e Hora</p>
+          <div className="flex gap-3">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="flex-1 bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
+            />
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              required
+              className="w-28 bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
+            />
+          </div>
         </div>
 
         {/* Currency */}
