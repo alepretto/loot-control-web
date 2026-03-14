@@ -6,6 +6,7 @@ import {
   transactionsApi,
   tagsApi,
   categoriesApi,
+  miniApi,
   Transaction,
   Tag,
   Category,
@@ -35,6 +36,18 @@ export default function MiniHomePage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Link Telegram account on first open
+  useEffect(() => {
+    try {
+      const initData = (window as unknown as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData;
+      if (initData) {
+        miniApi.linkTelegram(initData).catch(() => {});
+      }
+    } catch {
+      // Outside Telegram
+    }
+  }, []);
 
   useEffect(() => {
     async function load() {

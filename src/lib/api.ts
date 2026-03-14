@@ -245,6 +245,15 @@ export interface HistoricalLoadResult {
   us_stocks:      { loaded: number; tickers: string[] };
 }
 
+// ─── Mini App ─────────────────────────────────────────────────────────────────
+export const miniApi = {
+  linkTelegram: (initData: string) =>
+    request<{ linked: boolean; telegram_id: string }>("/mini/auth/telegram", {
+      method: "POST",
+      body: JSON.stringify({ init_data: initData }),
+    }),
+};
+
 // ─── Agent ────────────────────────────────────────────────────────────────────
 export const agentApi = {
   chat: (message: string) =>
