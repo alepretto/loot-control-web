@@ -4,81 +4,435 @@ import { useEffect, useState } from "react";
 import {
   transactionsApi,
   tagsApi,
+  categoriesApi,
   marketDataApi,
   Transaction,
   Tag,
-  ExchangeRates,
-  AssetPriceItem,
+  Category,
+  ExchangeRateHistoryItem,
+  AssetPriceHistoryItem,
+  CdiRateItem,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
-const CRYPTO_KEYWORDS = ["BTC", "ETH", "SOL", "BNB", "ADA", "DOT", "AVAX", "MATIC", "XRP", "DOGE", "LINK", "UNI", "ATOM", "LTC"];
+// ─── Helpers (same logic as web investments page) ─────────────────────────────
 
-function classifySymbol(tx: Transaction): string {
-  if (tx.index) return "Renda Fixa";
-  if (!tx.symbol) return "Outros";
-
-  const sym = tx.symbol.toUpperCase();
-
-  if (CRYPTO_KEYWORDS.includes(sym) || sym.endsWith("-USD") || sym.endsWith("USDT")) {
-    return "Crypto";
-  }
-
-  if (/\d$/.test(sym)) {
-    return "Ações BR";
-  }
-
-  return "Stocks EUA";
+function buildSortedRates(history: ExchangeRateHistoryItem[]) {
+  return [...history].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function toBRL(value: number, currency: string, rates: ExchangeRates): number {
-  if (currency === "USD" && rates.USD) return value * rates.USD;
-  if (currency === "EUR" && rates.EUR) return value * rates.EUR;
+function getRateForDate(sorted: ExchangeRateHistoryItem[], dateStr: string) {
+  const d = dateStr.slice(0, 10);
+  let best = sorted[0] ?? { date: "", USD: 5.0, EUR: 5.5 };
+  for (const r of sorted) {
+    if (r.date <= d) best = r;
+    else break;
+  }
+  return { USD: best.USD ?? 5.0, EUR: best.EUR ?? 5.5 };
+}
+
+function convertToBrl(value: number, currency: string, rate: { USD: number; EUR: number }): number {
+  if (currency === "USD") return value * rate.USD;
+  if (currency === "EUR") return value * rate.EUR;
   return value;
 }
 
-interface AssetRow {
+function accumulateCdi(
+  principal: number,
+  indexRate: number,
+  sortedCdi: CdiRateItem[],
+  fromDate: string,
+  toDate: string,
+): number {
+  const from = fromDate.slice(0, 10);
+  const to = toDate.slice(0, 10);
+  let factor = 1;
+  for (const r of sortedCdi) {
+    if (r.date < from) continue;
+    if (r.date > to) break;
+    factor *= 1 + (r.rate_pct * (indexRate / 100)) / 100;
+  }
+  return principal * factor;
+}
+
+function accumulateFixed(principal: number, annualPct: number, fromDate: string, toDate: string): number {
+  const msPerDay = 86_400_000;
+  const days = Math.max(0, (new Date(toDate).getTime() - new Date(fromDate).getTime()) / msPerDay);
+  return principal * Math.pow(1 + annualPct / 100, days / 365);
+}
+
+interface ClosedCycle {
   symbol: string;
-  class: string;
-  totalInvested: number;
-  investedBRL: number;
-  totalQty: number | null;
-  currency: string;
+  buysTotal: number;
+  sellsTotal: number;
+  result: number;
+  resultPct: number;
 }
 
-interface ClassGroup {
-  className: string;
-  assets: AssetRow[];
-  totalInvestedBRL: number;
+interface SymbolRow {
+  symbol: string;
+  qty: number;
+  aporteBrl: number;
+  carteiraBrl: number;
+  currentPrice: number | null;
+  priceCurrency: string;
+  closedCycles: ClosedCycle[];
+  // fixed income detail
+  details: { date: string; index: string | null; indexRate: number | null; principalBrl: number; currentBrl: number; returnPct: number }[];
 }
 
-const CLASS_ORDER = ["Crypto", "Ações BR", "Renda Fixa", "Stocks EUA", "Outros"];
+interface TagGroup {
+  tagName: string;
+  isFixedIncome: boolean;
+  rows: SymbolRow[];
+  totalAporte: number;
+  totalCarteira: number;
+  retornoBrl: number;
+  retornoPct: number;
+}
+
+function splitCycles(
+  txs: Transaction[],
+  tags: Tag[],
+  sortedRates: ExchangeRateHistoryItem[],
+): { closed: ClosedCycle[]; activeTxs: Transaction[] } {
+  const sorted = [...txs].sort((a, b) => a.date_transaction.localeCompare(b.date_transaction));
+  const closed: ClosedCycle[] = [];
+  let buys = 0, sells = 0, qty = 0, activeStart = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const tx = sorted[i];
+    const tag = tags.find((t) => t.id === tx.tag_id);
+    const isIncome = tag?.type === "income";
+    const rate = getRateForDate(sortedRates, tx.date_transaction);
+    const valBrl = convertToBrl(tx.value, tx.currency, rate);
+    if (isIncome) { sells += valBrl; qty -= tx.quantity ?? 0; }
+    else { buys += valBrl; qty += tx.quantity ?? 0; }
+    if (qty <= 0.00001 && buys > 0) {
+      closed.push({
+        symbol: tx.symbol ?? "",
+        buysTotal: buys,
+        sellsTotal: sells,
+        result: sells - buys,
+        resultPct: buys > 0 ? ((sells - buys) / buys) * 100 : 0,
+      });
+      buys = 0; sells = 0; qty = 0; activeStart = i + 1;
+    }
+  }
+  return { closed, activeTxs: sorted.slice(activeStart) };
+}
+
+function buildGroups(
+  txs: Transaction[],
+  tags: Tag[],
+  categories: Category[],
+  sortedRates: ExchangeRateHistoryItem[],
+  priceHistory: AssetPriceHistoryItem[],
+  sortedCdi: CdiRateItem[],
+): TagGroup[] {
+  const latestPrice = new Map<string, { price: number; currency: string }>();
+  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date)))
+    latestPrice.set(p.symbol, { price: p.price, currency: p.currency });
+
+  const latestRate = sortedRates[sortedRates.length - 1] ?? { USD: 5.0, EUR: 5.5 };
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const byTag = new Map<string, Transaction[]>();
+  for (const tx of txs) {
+    const tag = tags.find((t) => t.id === tx.tag_id);
+    const cat = categories.find((c) => c.id === tag?.category_id);
+    const name = cat?.name ?? tag?.name ?? "—";
+    if (!byTag.has(name)) byTag.set(name, []);
+    byTag.get(name)!.push(tx);
+  }
+
+  const groups: TagGroup[] = [];
+
+  for (const [tagName, tagTxs] of byTag) {
+    const isFixedIncome = tagTxs.some((tx) => tx.index);
+
+    const bySymbol = new Map<
+      string,
+      { aporteBrl: number; rendimentoBrl: number; qty: number; txList: Transaction[]; closedCycles: ClosedCycle[] }
+    >();
+
+    if (!isFixedIncome) {
+      const txsBySymbol = new Map<string, Transaction[]>();
+      for (const tx of tagTxs) {
+        const sym = tx.symbol ?? tagName;
+        if (!txsBySymbol.has(sym)) txsBySymbol.set(sym, []);
+        txsBySymbol.get(sym)!.push(tx);
+      }
+      for (const [sym, symTxs] of txsBySymbol) {
+        const { closed, activeTxs } = splitCycles(symTxs, tags, sortedRates);
+        let aporteBrl = 0, qty = 0;
+        for (const tx of activeTxs) {
+          const tag = tags.find((t) => t.id === tx.tag_id);
+          const isIncome = tag?.type === "income";
+          const rate = getRateForDate(sortedRates, tx.date_transaction);
+          const valBrl = convertToBrl(tx.value, tx.currency, rate);
+          if (isIncome) { qty -= tx.quantity ?? 0; aporteBrl -= valBrl; }
+          else { qty += tx.quantity ?? 0; aporteBrl += valBrl; }
+        }
+        bySymbol.set(sym, { aporteBrl, rendimentoBrl: 0, qty, txList: activeTxs, closedCycles: closed });
+      }
+    } else {
+      for (const tx of tagTxs) {
+        const tag = tags.find((t) => t.id === tx.tag_id);
+        const isIncome = tag?.type === "income";
+        const sym = tx.symbol ?? tx.index ?? tagName;
+        if (!bySymbol.has(sym))
+          bySymbol.set(sym, { aporteBrl: 0, rendimentoBrl: 0, qty: 0, txList: [], closedCycles: [] });
+        const agg = bySymbol.get(sym)!;
+        const rate = getRateForDate(sortedRates, tx.date_transaction);
+        const valBrl = convertToBrl(tx.value, tx.currency, rate);
+        agg.txList.push(tx);
+        if (isIncome) { agg.qty -= tx.quantity ?? 0; agg.rendimentoBrl += valBrl; }
+        else { agg.qty += tx.quantity ?? 0; agg.aporteBrl += valBrl; }
+      }
+    }
+
+    const rows: SymbolRow[] = [];
+
+    for (const [sym, agg] of bySymbol) {
+      const priceEntry = latestPrice.get(sym);
+      const currentPrice = priceEntry?.price ?? null;
+      const priceCurrency = priceEntry?.currency ?? "BRL";
+
+      const details: SymbolRow["details"] = [];
+      if (isFixedIncome) {
+        for (const tx of agg.txList) {
+          const tag = tags.find((t) => t.id === tx.tag_id);
+          if (tag?.type === "income") continue;
+          const rate = getRateForDate(sortedRates, tx.date_transaction);
+          const princBrl = convertToBrl(tx.value, tx.currency, rate);
+          const txDate = tx.date_transaction.slice(0, 10);
+          let curBrl: number;
+          if (tx.index?.toUpperCase() === "CDI" && sortedCdi.length > 0) {
+            curBrl = accumulateCdi(princBrl, tx.index_rate ?? 100, sortedCdi, txDate, todayStr);
+          } else if (tx.index_rate) {
+            curBrl = accumulateFixed(princBrl, tx.index_rate, txDate, todayStr);
+          } else {
+            curBrl = princBrl;
+          }
+          details.push({
+            date: tx.date_transaction.slice(0, 10),
+            index: tx.index ?? null,
+            indexRate: tx.index_rate ?? null,
+            principalBrl: princBrl,
+            currentBrl: curBrl,
+            returnPct: princBrl > 0 ? ((curBrl - princBrl) / princBrl) * 100 : 0,
+          });
+        }
+      }
+
+      let carteiraBrl: number;
+      if (isFixedIncome) {
+        carteiraBrl =
+          details.length > 0
+            ? details.reduce((s, d) => s + d.currentBrl, 0) + agg.rendimentoBrl
+            : agg.aporteBrl + agg.rendimentoBrl;
+      } else if (currentPrice !== null && agg.qty > 0) {
+        carteiraBrl = convertToBrl(agg.qty * currentPrice, priceCurrency, latestRate);
+      } else {
+        carteiraBrl = 0;
+      }
+
+      rows.push({ symbol: sym, qty: agg.qty, aporteBrl: agg.aporteBrl, carteiraBrl, currentPrice, priceCurrency, closedCycles: agg.closedCycles, details });
+    }
+
+    rows.sort((a, b) => b.aporteBrl - a.aporteBrl);
+
+    const totalAporte = rows.reduce((s, r) => s + r.aporteBrl, 0);
+    const totalCarteira = rows.reduce((s, r) => s + r.carteiraBrl, 0);
+    const retornoBrl = totalCarteira - totalAporte;
+    const retornoPct = totalAporte > 0 ? (retornoBrl / totalAporte) * 100 : 0;
+
+    groups.push({ tagName, isFixedIncome, rows, totalAporte, totalCarteira, retornoBrl, retornoPct });
+  }
+
+  const ORDER = ["Crypto", "Ações", "Stocks", "Renda Fixa"];
+  groups.sort((a, b) => {
+    const ia = ORDER.indexOf(a.tagName), ib = ORDER.indexOf(b.tagName);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+
+  return groups;
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+
+function RetornoBadge({ pct }: { pct: number }) {
+  return (
+    <span className={`text-xs font-mono font-semibold ${pct >= 0 ? "text-accent" : "text-danger"}`}>
+      {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+    </span>
+  );
+}
+
+function GroupCard({ group }: { group: TagGroup }) {
+  const [open, setOpen] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
+
+  const openRows = group.isFixedIncome
+    ? group.rows.filter((r) => r.carteiraBrl > 0)
+    : group.rows.filter((r) => r.qty > 0);
+
+  const allClosed = group.isFixedIncome
+    ? group.rows.filter((r) => r.carteiraBrl <= 0)
+    : group.rows.flatMap((r) => r.closedCycles);
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[52px] active:bg-surface-2 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className={`text-xs transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+          <span className="text-sm font-semibold text-text-primary">{group.tagName}</span>
+          <span className="text-xs text-muted">({openRows.length})</span>
+        </div>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-sm font-mono text-text-primary">
+            {group.totalCarteira > 0 ? formatCurrency(group.totalCarteira, "BRL") : formatCurrency(group.totalAporte, "BRL")}
+          </span>
+          {group.totalCarteira > 0 && <RetornoBadge pct={group.retornoPct} />}
+        </div>
+      </button>
+
+      {/* Rows */}
+      {open && (
+        <div className="border-t border-border divide-y divide-border">
+          {openRows.map((row) => {
+            const retPct = row.aporteBrl > 0 ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100 : 0;
+            return (
+              <div key={row.symbol} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-mono font-semibold text-primary truncate">{row.symbol}</p>
+                    {!group.isFixedIncome && row.qty > 0 && (
+                      <p className="text-xs text-muted mt-0.5">
+                        {row.qty % 1 === 0
+                          ? row.qty.toLocaleString("pt-BR")
+                          : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })} unid.
+                        {row.currentPrice !== null && (
+                          <span className="ml-1">
+                            · {row.priceCurrency === "USD"
+                              ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : formatCurrency(row.currentPrice, "BRL")}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {group.isFixedIncome && row.details.length > 0 && (
+                      <p className="text-xs text-muted mt-0.5">
+                        {row.details[0].index ?? "—"}{row.details[0].indexRate ? ` ${row.details[0].indexRate}%` : ""}
+                        {row.details.length > 1 && ` · ${row.details.length} aportes`}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end shrink-0 gap-0.5">
+                    <span className="text-sm font-mono text-text-primary">
+                      {row.carteiraBrl > 0 ? formatCurrency(row.carteiraBrl, "BRL") : formatCurrency(row.aporteBrl, "BRL")}
+                    </span>
+                    {row.carteiraBrl > 0 && <RetornoBadge pct={retPct} />}
+                    <span className="text-xs text-muted">aporte {formatCurrency(row.aporteBrl, "BRL")}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Closed positions */}
+          {allClosed.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowClosed((v) => !v)}
+                className="w-full px-4 py-2 text-xs text-muted text-left active:bg-surface-2 transition-colors"
+              >
+                {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
+              </button>
+              {showClosed && (
+                <div className="divide-y divide-border/50 opacity-60">
+                  {group.isFixedIncome
+                    ? (allClosed as SymbolRow[]).map((row) => (
+                        <div key={row.symbol} className="flex items-center justify-between px-4 py-2">
+                          <span className="text-sm font-mono text-muted">{row.symbol}</span>
+                          <span className={`text-xs font-mono ${(row.carteiraBrl - row.aporteBrl) >= 0 ? "text-accent" : "text-danger"}`}>
+                            {(row.carteiraBrl - row.aporteBrl) >= 0 ? "+" : ""}{formatCurrency(row.carteiraBrl - row.aporteBrl, "BRL")}
+                          </span>
+                        </div>
+                      ))
+                    : (allClosed as ClosedCycle[]).map((c, i) => (
+                        <div key={i} className="flex items-center justify-between px-4 py-2">
+                          <span className="text-sm font-mono text-muted">{c.symbol}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted">{formatCurrency(c.buysTotal, "BRL")} → {formatCurrency(c.sellsTotal, "BRL")}</span>
+                            <span className={`text-xs font-mono ${c.result >= 0 ? "text-accent" : "text-danger"}`}>
+                              {c.result >= 0 ? "+" : ""}{formatCurrency(c.result, "BRL")}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Group total */}
+          <div className="flex items-center justify-between px-4 py-2 bg-surface-2">
+            <span className="text-xs text-muted uppercase font-semibold">Total</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted">{formatCurrency(group.totalAporte, "BRL")}</span>
+              <span className="text-sm font-mono font-semibold text-text-primary">
+                {group.totalCarteira > 0 ? formatCurrency(group.totalCarteira, "BRL") : "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MiniInvestmentsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [rates, setRates] = useState<ExchangeRates>({ USD: null, EUR: null });
-  const [prices, setPrices] = useState<AssetPriceItem[]>([]);
+  const [groups, setGroups] = useState<TagGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const [txData, tagList, ratesData, pricesData] = await Promise.all([
+        const [txData, tagList, catList, rateHist, priceHist] = await Promise.all([
           transactionsApi.list({ page_size: 2000 }),
           tagsApi.list(),
-          marketDataApi.exchangeRates().catch(() => ({ USD: null, EUR: null })),
-          marketDataApi.assetPrices().catch(() => ({ prices: [] })),
+          categoriesApi.list(),
+          marketDataApi.exchangeRateHistory().catch(() => [] as typeof rateHist),
+          marketDataApi.assetPriceHistory().catch(() => [] as typeof priceHist),
         ]);
+
         const investmentTxs = txData.items.filter((tx) => tx.symbol || tx.index);
-        setTransactions(investmentTxs);
-        setTags(tagList);
-        setRates(ratesData);
-        setPrices(pricesData.prices);
+        const sortedRates = buildSortedRates(rateHist);
+
+        // CDI: from earliest fixed-income tx to today
+        let cdiRates: CdiRateItem[] = [];
+        const fixedTxs = investmentTxs.filter((tx) => tx.index);
+        if (fixedTxs.length > 0) {
+          const earliest = fixedTxs.map((tx) => tx.date_transaction.slice(0, 10)).sort()[0];
+          const today = new Date().toISOString().slice(0, 10);
+          try {
+            const cdi = await marketDataApi.cdiHistory(earliest, today);
+            cdiRates = cdi.sort((a, b) => a.date.localeCompare(b.date));
+          } catch { /* BCB offline — CDI optional */ }
+        }
+
+        const built = buildGroups(investmentTxs, tagList, catList, sortedRates, priceHist, cdiRates);
+        setGroups(built);
       } catch {
         setError("Erro ao carregar investimentos.");
       } finally {
@@ -88,88 +442,13 @@ export default function MiniInvestmentsPage() {
     load();
   }, []);
 
-  function toggleGroup(className: string) {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(className)) {
-        next.delete(className);
-      } else {
-        next.add(className);
-      }
-      return next;
-    });
-  }
-
-  // Aggregate by symbol + class
-  const assetMap = new Map<string, AssetRow>();
-  for (const tx of transactions) {
-    const tag = tags.find((t) => t.id === tx.tag_id);
-    const isIncome = tag?.type === "income";
-    const key = tx.symbol ?? tx.index ?? "—";
-    const assetClass = classifySymbol(tx);
-
-    if (!assetMap.has(key)) {
-      assetMap.set(key, {
-        symbol: key,
-        class: assetClass,
-        totalInvested: 0,
-        investedBRL: 0,
-        totalQty: tx.quantity !== null ? 0 : null,
-        currency: tx.currency,
-      });
-    }
-
-    const row = assetMap.get(key)!;
-    const sign = isIncome ? -1 : 1;
-    row.totalInvested += sign * tx.value;
-    row.investedBRL += sign * toBRL(tx.value, tx.currency, rates);
-    if (tx.quantity !== null && row.totalQty !== null) {
-      row.totalQty += sign * tx.quantity;
-    }
-  }
-
-  // Group by class
-  const classMap = new Map<string, ClassGroup>();
-  for (const asset of assetMap.values()) {
-    if (!classMap.has(asset.class)) {
-      classMap.set(asset.class, { className: asset.class, assets: [], totalInvestedBRL: 0 });
-    }
-    const group = classMap.get(asset.class)!;
-    group.assets.push(asset);
-    group.totalInvestedBRL += asset.investedBRL;
-  }
-
-  const groups = Array.from(classMap.values()).sort((a, b) => {
-    const ia = CLASS_ORDER.indexOf(a.className);
-    const ib = CLASS_ORDER.indexOf(b.className);
-    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-  });
-
-  const totalAportadoBRL = groups.reduce((s, g) => s + g.totalInvestedBRL, 0);
-  const numAssets = assetMap.size;
-  const numClasses = classMap.size;
-
-  // P&L per asset
-  function getAssetPnL(asset: AssetRow): number | null {
-    if (asset.totalQty === null || asset.totalQty <= 0) return null;
-    const priceData = prices.find((p) => p.symbol.toUpperCase() === asset.symbol.toUpperCase());
-    if (!priceData) return null;
-    const currentValueBRL = asset.totalQty * toBRL(priceData.price, priceData.currency, rates);
-    return currentValueBRL - asset.investedBRL;
-  }
-
-  // Total P&L across all assets with price data
-  let totalPnL: number | null = null;
-  for (const asset of assetMap.values()) {
-    const pnl = getAssetPnL(asset);
-    if (pnl !== null) {
-      totalPnL = (totalPnL ?? 0) + pnl;
-    }
-  }
+  const totalAporte = groups.reduce((s, g) => s + g.totalAporte, 0);
+  const totalCarteira = groups.reduce((s, g) => s + g.totalCarteira, 0);
+  const retornoTotal = totalCarteira - totalAporte;
+  const retornoPct = totalAporte > 0 ? (retornoTotal / totalAporte) * 100 : 0;
 
   return (
     <div className="px-4 pt-6 pb-4 space-y-5">
-      {/* Header */}
       <h1 className="text-lg font-bold text-text-primary">Investimentos</h1>
 
       {/* KPI cards */}
@@ -177,40 +456,36 @@ export default function MiniInvestmentsPage() {
         <div className="bg-surface border border-border rounded-2xl p-3 space-y-1">
           <p className="text-[10px] uppercase tracking-wider text-muted">Aportado</p>
           <p className={`text-sm font-bold font-mono text-primary ${loading ? "opacity-30" : ""}`}>
-            {loading ? "—" : formatCurrency(totalAportadoBRL, "BRL")}
+            {loading ? "—" : formatCurrency(totalAporte, "BRL")}
           </p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-3 space-y-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted">Ativos</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted">Carteira</p>
           <p className={`text-sm font-bold font-mono text-text-primary ${loading ? "opacity-30" : ""}`}>
-            {loading ? "—" : numAssets}
+            {loading ? "—" : totalCarteira > 0 ? formatCurrency(totalCarteira, "BRL") : "—"}
           </p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-3 space-y-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted">Classes</p>
-          <p className={`text-sm font-bold font-mono text-text-primary ${loading ? "opacity-30" : ""}`}>
-            {loading ? "—" : numClasses}
+          <p className="text-[10px] uppercase tracking-wider text-muted">Retorno</p>
+          <p className={`text-sm font-bold font-mono ${retornoTotal >= 0 ? "text-accent" : "text-danger"} ${loading ? "opacity-30" : ""}`}>
+            {loading ? "—" : totalCarteira > 0 ? `${retornoPct >= 0 ? "+" : ""}${retornoPct.toFixed(1)}%` : "—"}
           </p>
         </div>
       </div>
 
-      {/* Total P&L card (only if we have any price data) */}
-      {!loading && totalPnL !== null && (
+      {/* Total result card */}
+      {!loading && totalCarteira > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted mb-1">Resultado (preço atual)</p>
-            <p className={`text-2xl font-bold font-mono ${totalPnL >= 0 ? "text-accent" : "text-danger"}`}>
-              {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, "BRL")}
+            <p className="text-xs uppercase tracking-wider text-muted mb-1">Resultado</p>
+            <p className={`text-2xl font-bold font-mono ${retornoTotal >= 0 ? "text-accent" : "text-danger"}`}>
+              {retornoTotal >= 0 ? "+" : ""}{formatCurrency(retornoTotal, "BRL")}
             </p>
           </div>
-          {totalAportadoBRL > 0 && (
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-muted mb-1">Retorno</span>
-              <span className={`text-lg font-bold font-mono ${totalPnL >= 0 ? "text-accent" : "text-danger"}`}>
-                {((totalPnL / totalAportadoBRL) * 100).toFixed(1)}%
-              </span>
-            </div>
-          )}
+          <div className="flex flex-col items-end">
+            <span className="text-xs text-muted mb-1">vs aportado</span>
+            <RetornoBadge pct={retornoPct} />
+          </div>
         </div>
       )}
 
@@ -222,76 +497,9 @@ export default function MiniInvestmentsPage() {
         <p className="text-muted text-sm text-center py-8">Nenhum investimento encontrado.</p>
       ) : (
         <div className="space-y-3">
-          {groups.map((group) => {
-            const isOpen = openGroups.has(group.className);
-            const groupPnL = group.assets.reduce<number | null>((acc, asset) => {
-              const pnl = getAssetPnL(asset);
-              if (pnl === null) return acc;
-              return (acc ?? 0) + pnl;
-            }, null);
-
-            return (
-              <div key={group.className} className="bg-surface border border-border rounded-2xl overflow-hidden">
-                {/* Class header — tap to toggle */}
-                <button
-                  onClick={() => toggleGroup(group.className)}
-                  className="w-full flex items-center justify-between px-4 py-3 min-h-[52px] active:bg-surface-2 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs transition-transform ${isOpen ? "rotate-90" : ""}`}>▶</span>
-                    <span className="text-sm font-semibold text-text-primary">{group.className}</span>
-                    <span className="text-xs text-muted">({group.assets.length})</span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm font-mono text-text-primary">
-                      {formatCurrency(group.totalInvestedBRL, "BRL")}
-                    </span>
-                    {groupPnL !== null && (
-                      <span className={`text-xs font-mono ${groupPnL >= 0 ? "text-accent" : "text-danger"}`}>
-                        {groupPnL >= 0 ? "+" : ""}{formatCurrency(groupPnL, "BRL")}
-                      </span>
-                    )}
-                  </div>
-                </button>
-
-                {/* Asset rows — only when open */}
-                {isOpen && (
-                  <div className="divide-y divide-border border-t border-border">
-                    {group.assets
-                      .sort((a, b) => b.investedBRL - a.investedBRL)
-                      .map((asset) => {
-                        const pnl = getAssetPnL(asset);
-                        return (
-                          <div key={asset.symbol} className="flex items-center justify-between px-4 py-3 min-h-[52px]">
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-sm font-mono font-semibold text-primary">{asset.symbol}</span>
-                              {asset.totalQty !== null && asset.totalQty > 0 && (
-                                <span className="text-xs text-muted">
-                                  {asset.totalQty % 1 === 0
-                                    ? asset.totalQty.toFixed(0)
-                                    : asset.totalQty.toFixed(6).replace(/0+$/, "")}{" "}
-                                  unid.
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-sm font-mono text-text-primary">
-                                {formatCurrency(asset.totalInvested, asset.currency)}
-                              </span>
-                              {pnl !== null && (
-                                <span className={`text-xs font-mono ${pnl >= 0 ? "text-accent" : "text-danger"}`}>
-                                  {pnl >= 0 ? "+" : ""}{formatCurrency(pnl, "BRL")}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {groups.map((group) => (
+            <GroupCard key={group.tagName} group={group} />
+          ))}
         </div>
       )}
     </div>
