@@ -35,9 +35,10 @@ export default function TagsPage() {
   // Category family editing
   const [movingCatId, setMovingCatId] = useState<string | null>(null);
 
-  // Tag name editing
+  // Tag editing panel
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingTagName, setEditingTagName] = useState("");
+  const [editingTagCatId, setEditingTagCatId] = useState<string>("");
 
   // Collapsed state: Set of IDs that are collapsed
   const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
@@ -127,16 +128,29 @@ export default function TagsPage() {
     load();
   }
 
-  async function toggleTag(tag: Tag) {
-    await tagsApi.update(tag.id, { is_active: !tag.is_active });
+  function openEditTag(tag: Tag) {
+    setEditingTagId(tag.id);
+    setEditingTagName(tag.name);
+    setEditingTagCatId(tag.category_id);
+  }
+
+  function closeEditTag() {
+    setEditingTagId(null);
+  }
+
+  async function saveTag(tag: Tag) {
+    const name = editingTagName.trim();
+    if (!name) return;
+    const patch: Partial<{ name: string; is_active: boolean; category_id: string }> = {};
+    if (name !== tag.name) patch.name = name;
+    if (editingTagCatId !== tag.category_id) patch.category_id = editingTagCatId;
+    if (Object.keys(patch).length > 0) await tagsApi.update(tag.id, patch);
+    closeEditTag();
     load();
   }
 
-  async function renameTag(tag: Tag) {
-    const name = editingTagName.trim();
-    if (!name || name === tag.name) { setEditingTagId(null); return; }
-    await tagsApi.update(tag.id, { name });
-    setEditingTagId(null);
+  async function toggleTag(tag: Tag) {
+    await tagsApi.update(tag.id, { is_active: !tag.is_active });
     load();
   }
 
@@ -232,59 +246,83 @@ export default function TagsPage() {
           {catTags.map((tag) => {
             const isEditingThis = editingTagId === tag.id;
             return (
-            <div key={tag.id} className="flex items-center justify-between px-4 py-2 gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${
-                    tag.type === "income"
-                      ? "bg-accent/20 text-accent"
-                      : "bg-danger/20 text-danger"
-                  }`}
-                >
-                  {tag.type === "income" ? "Entrada" : "Saída"}
-                </span>
-                {isEditingThis ? (
-                  <input
-                    autoFocus
-                    value={editingTagName}
-                    onChange={(e) => setEditingTagName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") renameTag(tag);
-                      if (e.key === "Escape") setEditingTagId(null);
-                    }}
-                    onBlur={() => renameTag(tag)}
-                    className="bg-background border border-primary rounded px-2 py-0.5 text-sm text-text-primary focus:outline-none"
+            <div key={tag.id} className="flex flex-col group">
+              {/* Row */}
+              <div className="flex items-center justify-between px-4 py-2 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`shrink-0 w-2 h-2 rounded-full ${
+                      tag.type === "income" ? "bg-accent" : "bg-danger"
+                    }`}
+                    title={tag.type === "income" ? "Entrada" : "Saída"}
                   />
-                ) : (
                   <span className={`text-sm ${tag.is_active ? "text-text-primary" : "text-muted line-through"}`}>
                     {tag.name}
                   </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {!isEditingThis && (
+                  {!tag.is_active && (
+                    <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-surface-3 text-muted">
+                      Inativo
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
                   <button
-                    onClick={() => { setEditingTagId(tag.id); setEditingTagName(tag.name); }}
-                    className="text-xs text-muted hover:text-text-primary transition-colors"
+                    onClick={() => isEditingThis ? closeEditTag() : openEditTag(tag)}
+                    className={`text-xs transition-colors ${isEditingThis ? "text-primary" : "text-muted hover:text-text-primary"}`}
                   >
-                    Renomear
+                    {isEditingThis ? "Fechar" : "Editar"}
                   </button>
-                )}
-                <button
-                  onClick={() => toggleTag(tag)}
-                  className={`text-xs transition-colors ${
-                    tag.is_active ? "text-muted hover:text-danger" : "text-accent hover:text-accent/80"
-                  }`}
-                >
-                  {tag.is_active ? "Desativar" : "Ativar"}
-                </button>
-                <button
-                  onClick={() => deleteTag(tag)}
-                  className="text-xs text-muted hover:text-danger transition-colors"
-                >
-                  Excluir
-                </button>
+                  <button
+                    onClick={() => deleteTag(tag)}
+                    className="text-xs text-muted hover:text-danger transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
+              {/* Edit panel */}
+              {isEditingThis && (
+                <div className="px-4 pb-3 pt-1 bg-surface-2 flex flex-col gap-2">
+                  <div className="flex gap-2 items-center">
+                    <label className="text-xs text-muted w-16 shrink-0">Nome</label>
+                    <input
+                      autoFocus
+                      value={editingTagName}
+                      onChange={(e) => setEditingTagName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Escape") closeEditTag(); }}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <label className="text-xs text-muted w-16 shrink-0">Categoria</label>
+                    <select
+                      value={editingTagCatId}
+                      onChange={(e) => setEditingTagCatId(e.target.value)}
+                      className={selectCls + " flex-1"}
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2 items-center justify-between">
+                    <button
+                      onClick={() => toggleTag(tag)}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${
+                        tag.is_active
+                          ? "border-danger/40 text-danger hover:bg-danger/10"
+                          : "border-accent/40 text-accent hover:bg-accent/10"
+                      }`}
+                    >
+                      {tag.is_active ? "Desativar" : "Ativar"}
+                    </button>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" variant="ghost" onClick={closeEditTag}>Cancelar</Button>
+                      <Button type="button" size="sm" onClick={() => saveTag(tag)}>Salvar</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             );
           })}

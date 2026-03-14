@@ -4,16 +4,26 @@ import Image from "next/image";
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-text-primary overflow-x-hidden">
-
       {/* ── Nav ─────────────────────────────────────────── */}
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-border backdrop-blur-md bg-background/80">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" alt="Loot Control" width={28} height={28} className="rounded-lg" />
-            <span className="font-bold text-sm tracking-tight">Loot Control</span>
+            <Image
+              src="/nav-icon.png"
+              alt="Loot Control"
+              width={50}
+              height={50}
+              className="rounded-lg"
+            />
+            <span className="font-bold text-xl tracking-tight">
+              Loot Control
+            </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-muted hover:text-text-primary transition-colors">
+            <Link
+              href="/login"
+              className="text-xm text-muted hover:text-text-primary transition-colors"
+            >
               Entrar
             </Link>
             <Link
@@ -28,7 +38,7 @@ export default function LandingPage() {
 
       {/* ── Hero ────────────────────────────────────────── */}
       <section className="pt-28 pb-24 px-6 text-center relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px]  rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-sm mx-auto mb-10">
           <Image
@@ -97,7 +107,10 @@ export default function LandingPage() {
                 text: "Seus investimentos ficam em outro lugar, desconectados das suas despesas.",
               },
             ].map(({ icon, text }) => (
-              <div key={text} className="bg-surface border border-border rounded-xl p-5 flex gap-4">
+              <div
+                key={text}
+                className="bg-surface border border-border rounded-xl p-5 flex gap-4"
+              >
                 <span className="text-2xl mt-0.5 shrink-0">{icon}</span>
                 <p className="text-sm text-muted leading-relaxed">{text}</p>
               </div>
@@ -110,8 +123,12 @@ export default function LandingPage() {
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 space-y-3">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">O que você ganha</p>
-            <h2 className="text-3xl font-bold">Tudo que você precisa, nada do que você não precisa</h2>
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              O que você ganha
+            </p>
+            <h2 className="text-3xl font-bold">
+              Tudo que você precisa, nada do que você não precisa
+            </h2>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -163,7 +180,9 @@ export default function LandingPage() {
                 key={title}
                 className="bg-surface border border-border rounded-xl p-6 space-y-3 hover:border-primary/40 transition-colors"
               >
-                <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center text-xl`}>
+                <div
+                  className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center text-xl`}
+                >
                   {icon}
                 </div>
                 <h3 className={`font-semibold text-sm ${accent}`}>{title}</h3>
@@ -174,11 +193,99 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Hierarquia ──────────────────────────────────── */}
+      <section className="py-24 px-6 border-t border-border">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14 space-y-3">
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              Organização inteligente
+            </p>
+            <h2 className="text-3xl font-bold">
+              Um sistema que se adapta à sua vida
+            </h2>
+            <p className="text-muted text-base max-w-xl mx-auto leading-relaxed">
+              Você organiza do jeito que faz sentido pra você — não pra uma planilha genérica.
+            </p>
+          </div>
+
+          {/* 3-level visual */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-0 mb-10">
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-primary/10 border border-primary/30 rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-primary font-bold text-sm mb-1">Família</p>
+                <p className="text-muted text-xs leading-snug">O grupo maior<br />(ex: Moradia, Alimentação)</p>
+              </div>
+            </div>
+            <div className="text-muted text-2xl sm:shrink-0 rotate-90 sm:rotate-0">→</div>
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-accent/10 border border-accent/30 rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-accent font-bold text-sm mb-1">Categoria</p>
+                <p className="text-muted text-xs leading-snug">Subdivide a família<br />(ex: Aluguel, Mercado)</p>
+              </div>
+            </div>
+            <div className="text-muted text-2xl sm:shrink-0 rotate-90 sm:rotate-0">→</div>
+            <div className="flex flex-col items-center gap-2 sm:flex-1">
+              <div className="bg-surface-2 border border-border rounded-xl px-6 py-4 text-center w-full max-w-[180px]">
+                <p className="text-text-primary font-bold text-sm mb-1">Tag</p>
+                <p className="text-muted text-xs leading-snug">O detalhe final — define se é Gasto ou Receita</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Concrete example */}
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-4">Exemplo real</p>
+            <div className="space-y-3 font-mono text-sm">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">💰 Renda</span>
+                  {" → "}
+                  <span className="text-text-secondary">Salário</span>
+                  {" → "}
+                  <span className="text-text-primary">Salário CLT</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-accent bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Receita
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">🏠 Moradia</span>
+                  {" → "}
+                  <span className="text-text-secondary">Aluguel</span>
+                  {" → "}
+                  <span className="text-text-primary">Mensalidade</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-danger bg-danger/10 border border-danger/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Gasto
+                </span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-muted">
+                  <span className="text-text-secondary">🍔 Alimentação</span>
+                  {" → "}
+                  <span className="text-text-secondary">Mercado</span>
+                  {" → "}
+                  <span className="text-text-primary">Feira</span>
+                </span>
+                <span className="text-xs font-sans font-medium text-danger bg-danger/10 border border-danger/20 px-2.5 py-0.5 rounded-full shrink-0">
+                  Gasto
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Como funciona ───────────────────────────────── */}
       <section id="como-funciona" className="py-24 px-6 border-t border-border">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16 space-y-3">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">Como funciona</p>
+            <p className="text-xs font-semibold text-primary uppercase tracking-widest">
+              Como funciona
+            </p>
             <h2 className="text-3xl font-bold">Simples do começo ao fim</h2>
           </div>
 
@@ -186,23 +293,23 @@ export default function LandingPage() {
             {[
               {
                 step: "01",
-                title: "Monte sua estrutura uma vez",
-                desc: "Crie suas famílias de gastos (ex: Moradia, Lazer), categorias e tags. Feito em minutos, serve pra sempre.",
+                title: "Crie sua estrutura uma única vez",
+                desc: "Na aba Tags, crie suas Famílias (ex: Moradia, Alimentação), depois suas Categorias e finalmente as Tags com o tipo (Gasto ou Receita). Leva menos de 10 minutos e você nunca mais precisa mudar.",
               },
               {
                 step: "02",
-                title: "Registre no dia a dia",
-                desc: "Abra, clique na linha nova da tabela e registre. Data, categoria, valor — é isso. Sem formulários intermináveis.",
+                title: "Registre em menos de 5 segundos",
+                desc: "Abra Transações, clique na primeira linha e preencha: data, tag e valor. Pronto. Sem formulários, sem menus escondidos, sem complicação.",
               },
               {
                 step: "03",
-                title: "Entenda seus padrões",
-                desc: "No fim do mês, abra o Resumo. Veja onde está gastando mais, quanto da sua renda vai pra cada grupo e se melhorou ou piorou em relação ao mês anterior.",
+                title: "Importe o que já tem",
+                desc: "Tinha dados em planilha? Baixe nosso modelo CSV, cole seus dados e faça upload. Meses de histórico importados em minutos.",
               },
               {
                 step: "04",
-                title: "Acompanhe seus investimentos",
-                desc: "Registre aportes e resgates junto com suas transações normais. O painel de investimentos mostra sua evolução e alocação atual.",
+                title: "Veja o panorama completo",
+                desc: "No Resumo, acompanhe entradas, saídas e taxa de poupança por mês. Nos Investimentos, veja o crescimento da sua carteira com gráficos automáticos.",
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="flex gap-5 items-start">
@@ -251,7 +358,8 @@ export default function LandingPage() {
             </span>
           </h2>
           <p className="text-muted text-base">
-            Crie sua conta em segundos e comece a ter clareza sobre o seu dinheiro.
+            Crie sua conta em segundos e comece a ter clareza sobre o seu
+            dinheiro.
           </p>
           <Link
             href="/login"
@@ -259,7 +367,9 @@ export default function LandingPage() {
           >
             Criar conta grátis →
           </Link>
-          <p className="text-xs text-muted">Sem cartão de crédito. Sem pegadinha.</p>
+          <p className="text-xs text-muted">
+            Sem cartão de crédito. Sem pegadinha.
+          </p>
         </div>
       </section>
 
@@ -267,10 +377,18 @@ export default function LandingPage() {
       <footer className="border-t border-border py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Loot Control" width={20} height={20} className="rounded-md opacity-60" />
+            <Image
+              src="/logo.png"
+              alt="Loot Control"
+              width={20}
+              height={20}
+              className="rounded-md opacity-60"
+            />
             <span className="text-xs text-muted">Loot Control</span>
           </div>
-          <p className="text-xs text-muted">Feito para quem quer ter controle de verdade, sem atrito.</p>
+          <p className="text-xs text-muted">
+            Feito para quem quer ter controle de verdade, sem atrito.
+          </p>
           <Link href="/login" className="text-xs text-primary hover:underline">
             Entrar na conta →
           </Link>

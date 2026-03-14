@@ -22,6 +22,7 @@ import {
   Tag,
   TagFamily,
 } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
@@ -56,10 +57,13 @@ function buildYearOptions(currentYear: number): number[] {
 }
 
 function monthBounds(year: number, month: number) {
-  const from = new Date(year, month - 1, 1);
-  const to   = new Date(year, month, 0, 23, 59, 59);
-  const fmt  = (d: Date) => d.toISOString().split("T")[0];
-  return { date_from: fmt(from), date_to: fmt(to) };
+  // Use local date parts to avoid UTC shift (e.g. 2025-02-28 23:59 BR = 2025-03-01 02:59 UTC)
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    date_from: `${year}-${pad(month)}-01`,
+    date_to:   `${year}-${pad(month)}-${pad(lastDay)}`,
+  };
 }
 
 const DONUT_COLORS = [
@@ -82,6 +86,7 @@ export default function SummaryPage() {
   const [families,    setFamilies]    = useState<TagFamily[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [expandedFamilies, setExpandedFamilies] = useState<Set<string>>(new Set());
+  const [showTxList, setShowTxList] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -131,13 +136,16 @@ export default function SummaryPage() {
     return { tag, cat, familyId: cat?.family_id ?? null };
   }
 
+  // Investimentos ficam na aba de Investimentos — excluir do Resumo
+  const nonInvestmentTxs = transactions.filter((tx) => !tx.symbol && !tx.index);
+
   // KPI totals
-  const totalIncome = transactions
+  const totalIncome = nonInvestmentTxs
     .filter((tx) => resolveFamily(tx).tag?.type === "income")
     .reduce((s, tx) => s + tx.value, 0);
 
-  const totalOutcome = transactions
-    .filter((tx) => resolveFamily(tx).tag?.type !== "income")
+  const totalOutcome = nonInvestmentTxs
+    .filter((tx) => resolveFamily(tx).tag?.type === "outcome")
     .reduce((s, tx) => s + tx.value, 0);
 
   const balance = totalIncome - totalOutcome;
@@ -145,10 +153,11 @@ export default function SummaryPage() {
     ? (((totalIncome - totalOutcome) / totalIncome) * 100)
     : 0;
 
-  // Family group aggregation
+  // Family group aggregation (excluindo investimentos)
   function buildFamilyMap(txList: Transaction[]): Record<string, number> {
     const map: Record<string, number> = {};
     for (const tx of txList) {
+      if (tx.symbol || tx.index) continue;
       const { tag, familyId } = resolveFamily(tx);
       if (tag?.type === "income") continue;
       const key = familyId ?? "__none__";
@@ -190,9 +199,9 @@ export default function SummaryPage() {
     };
   }).sort((a, b) => b.outcome - a.outcome);
 
-  // Income by category
+  // Income by category (excluindo investimentos)
   const incomeByCategory: Record<string, number> = {};
-  for (const tx of transactions) {
+  for (const tx of nonInvestmentTxs) {
     const { tag, cat } = resolveFamily(tx);
     if (tag?.type !== "income") continue;
     const name = cat?.name ?? "—";
@@ -235,9 +244,9 @@ export default function SummaryPage() {
     },
   };
 
-  // Bar chart (top 10 categories by outcome)
+  // Bar chart (top 10 categories by outcome — excluindo investimentos)
   const catSpending: Record<string, number> = {};
-  for (const tx of transactions) {
+  for (const tx of nonInvestmentTxs) {
     const { tag, cat } = resolveFamily(tx);
     if (tag?.type === "income") continue;
     const name = cat?.name ?? "—";
@@ -265,8 +274,8 @@ export default function SummaryPage() {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (ctx: { parsed: { x: number } }) =>
-            ` ${formatCurrency(ctx.parsed.x, "BRL")}`,
+          label: (ctx: { parsed: { x: number | null } }) =>
+            ` ${formatCurrency(ctx.parsed.x ?? 0, "BRL")}`,
         },
         backgroundColor: "#141A22",
         borderColor: "#20282F",
@@ -603,6 +612,63 @@ export default function SummaryPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Transaction list ──────────────────────────────────────────────── */}
+      {!loading && transactions.length > 0 && (
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowTxList((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-surface-2 hover:bg-surface-3 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-text-primary">Transações do mês</span>
+              <span className="text-xs text-muted">({transactions.length})</span>
+            </div>
+            <span className="text-muted text-xs">{showTxList ? "▲" : "▼"}</span>
+          </button>
+
+          {showTxList && (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Data</th>
+                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Família</th>
+                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Categoria</th>
+                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Tag</th>
+                    <th className="text-right px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {[...transactions]
+                    .sort((a, b) => b.date_transaction.localeCompare(a.date_transaction))
+                    .map((tx) => {
+                      const { tag, cat, familyId } = resolveFamily(tx);
+                      const family = families.find((f) => f.id === familyId);
+                      const isIncome = tag?.type === "income";
+                      return (
+                        <tr key={tx.id} className="hover:bg-surface-2 transition-colors">
+                          <td className="px-4 py-2 text-xs font-mono text-muted whitespace-nowrap">
+                            {formatDate(tx.date_transaction)}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-text-secondary">{family?.name ?? "—"}</td>
+                          <td className="px-4 py-2 text-sm text-text-secondary">{cat?.name ?? "—"}</td>
+                          <td className="px-4 py-2 text-sm text-muted">
+                            {tag?.name ?? "—"}
+                            {tx.symbol && <span className="ml-1 text-xs font-mono text-primary">{tx.symbol}</span>}
+                          </td>
+                          <td className={`px-4 py-2 text-sm font-mono text-right ${isIncome ? "text-accent" : "text-text-primary"}`}>
+                            {isIncome ? "+" : "-"}{formatCurrency(tx.value, tx.currency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
