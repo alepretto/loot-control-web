@@ -189,6 +189,7 @@ export default function TransactionsPage() {
               <TransactionRow
                 key={tx.id}
                 transaction={tx}
+                families={families}
                 categories={categories}
                 tags={tags}
                 onUpdated={load}

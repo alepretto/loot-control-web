@@ -1,24 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Transaction, Category, Tag, transactionsApi } from "@/lib/api";
+import { Transaction, Category, Tag, TagFamily, transactionsApi } from "@/lib/api";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 interface Props {
   transaction: Transaction;
+  families: TagFamily[];
   categories: Category[];
   tags: Tag[];
   onUpdated: () => void;
   onDeleted: () => void;
 }
 
-export function TransactionRow({ transaction, categories, tags, onUpdated, onDeleted }: Props) {
+export function TransactionRow({ transaction, families, categories, tags, onUpdated, onDeleted }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(transaction);
   const [saving, setSaving] = useState(false);
 
   const tag = tags.find((t) => t.id === transaction.tag_id);
   const category = categories.find((c) => c.id === tag?.category_id);
+  const family = families.find((f) => f.id === category?.family_id);
   const isIncome = tag?.type === "income";
 
   async function save() {
@@ -68,6 +70,7 @@ export function TransactionRow({ transaction, categories, tags, onUpdated, onDel
             {isIncome ? "Entrada" : "Saída"}
           </span>
         </td>
+        <td className={`${cellCls} text-muted`}>{family?.name ?? "—"}</td>
         <td className={`${cellCls} text-muted`}>{category?.name ?? "—"}</td>
         <td className={cellCls}>{tag?.name ?? "—"}</td>
         <td className={`${cellCls} font-mono text-right`}>
