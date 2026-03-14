@@ -54,11 +54,12 @@ export default function MiniLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     try {
-      const tg = (window as unknown as { Telegram?: { WebApp?: { ready?: () => void; expand?: () => void; contentSafeAreaInset?: { top?: number } } } }).Telegram?.WebApp;
+      const tg = (window as unknown as { Telegram?: { WebApp?: { ready?: () => void; expand?: () => void; safeAreaInset?: { top?: number }; contentSafeAreaInset?: { top?: number } } } }).Telegram?.WebApp;
       tg?.ready?.();
       tg?.expand?.();
-      const inset = tg?.contentSafeAreaInset?.top ?? 0;
-      setTopInset(inset);
+      const saInset = tg?.safeAreaInset?.top ?? 0;
+      const contentSaInset = tg?.contentSafeAreaInset?.top ?? 0;
+      setTopInset(saInset + contentSaInset);
     } catch {
       // Not running inside Telegram — that's fine
     }
@@ -74,7 +75,7 @@ export default function MiniLayout({ children }: { children: React.ReactNode }) 
         strategy="beforeInteractive"
       />
       <div className="min-h-screen bg-background">
-        <main className="min-h-screen bg-background pb-20" style={{ paddingTop: topInset > 0 ? `${topInset}px` : "var(--tg-content-safe-area-inset-top, 0px)" }}>
+        <main className="min-h-screen bg-background pb-20" style={{ paddingTop: topInset > 0 ? `${topInset}px` : "calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px))" }}>
           {children}
         </main>
 
