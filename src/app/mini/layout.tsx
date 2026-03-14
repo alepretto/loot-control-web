@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
@@ -48,14 +48,36 @@ const tabs = [
   },
 ];
 
+type TelegramWebApp = {
+  ready?: () => void;
+  expand?: () => void;
+  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  safeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  onEvent?: (event: string, handler: () => void) => void;
+};
+
 export default function MiniLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [topInset, setTopInset] = useState(0);
 
   useEffect(() => {
     try {
-      const tg = (window as unknown as { Telegram?: { WebApp?: { ready?: () => void; expand?: () => void } } }).Telegram?.WebApp;
-      tg?.ready?.();
-      tg?.expand?.();
+      const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp;
+      if (!tg) return;
+      tg.ready?.();
+      tg.expand?.();
+
+      const applyInset = () => {
+        // contentSafeAreaInset.top covers the Telegram header bar (buttons, title)
+        const top = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+        setTopInset(top);
+      };
+
+      applyInset();
+      // Re-apply when viewport changes (e.g. header appears/disappears)
+      tg.onEvent?.("viewportChanged", applyInset);
+      tg.onEvent?.("safeAreaChanged", applyInset);
+      tg.onEvent?.("contentSafeAreaChanged", applyInset);
     } catch {
       // Not running inside Telegram — that's fine
     }
@@ -71,7 +93,7 @@ export default function MiniLayout({ children }: { children: React.ReactNode }) 
         strategy="beforeInteractive"
       />
       <div className="min-h-screen bg-background">
-        <main className="min-h-screen bg-background pb-20">
+        <main className="min-h-screen bg-background pb-20" style={{ paddingTop: topInset > 0 ? topInset : undefined }}>
           {children}
         </main>
 

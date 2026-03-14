@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Category, Tag, transactionsApi, CategoryType, Currency } from "@/lib/api";
+import { Category, Tag, TagFamily, transactionsApi, CategoryType, Currency } from "@/lib/api";
 
 interface Props {
+  families: TagFamily[];
   categories: Category[];
   tags: Tag[];
   onCreated: () => void;
@@ -28,6 +29,7 @@ function makeEmpty() {
   return {
     date_transaction: brazilDatetime(),
     type: "outcome" as CategoryType,
+    family_id: "",
     category_id: "",
     tag_id: "",
     value: "",
@@ -39,16 +41,17 @@ function makeEmpty() {
   };
 }
 
-export function AddTransactionRow({ categories, tags, onCreated }: Props) {
+export function AddTransactionRow({ families, categories, tags, onCreated }: Props) {
   const [form, setForm] = useState(makeEmpty);
   const [saving, setSaving] = useState(false);
 
-  // type filtra tags; category_id filtra dentro das tags já filtradas
+  const filteredCategories = categories.filter(
+    (c) =>
+      (form.family_id === "" || c.family_id === form.family_id) &&
+      tags.some((t) => t.type === form.type && t.category_id === c.id)
+  );
   const filteredTags = tags.filter(
     (t) => t.type === form.type && (form.category_id === "" || t.category_id === form.category_id)
-  );
-  const filteredCategories = categories.filter((c) =>
-    tags.some((t) => t.type === form.type && t.category_id === c.id)
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -102,7 +105,19 @@ export function AddTransactionRow({ categories, tags, onCreated }: Props) {
         </select>
       </td>
       <td className="px-3 py-1.5">
-        {/* Categoria: mostra só categorias que têm tags do tipo selecionado */}
+        <select
+          value={form.family_id}
+          onChange={(e) => setForm({ ...form, family_id: e.target.value, category_id: "", tag_id: "" })}
+          className={selectCls}
+        >
+          <option value="">Família</option>
+          {families.map((f) => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </select>
+      </td>
+      <td className="px-3 py-1.5">
+        {/* Categoria: filtrada por família e tipo */}
         <select
           value={form.category_id}
           onChange={(e) => setForm({ ...form, category_id: e.target.value, tag_id: "" })}
