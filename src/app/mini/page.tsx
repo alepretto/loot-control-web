@@ -6,10 +6,12 @@ import {
   transactionsApi,
   tagsApi,
   categoriesApi,
+  marketDataApi,
   miniApi,
   Transaction,
   Tag,
   Category,
+  ExchangeRates,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -27,6 +29,12 @@ function monthBounds(year: number, month: number) {
   };
 }
 
+function toBRL(value: number, currency: string, rates: ExchangeRates): number {
+  if (currency === "USD" && rates.USD) return value * rates.USD;
+  if (currency === "EUR" && rates.EUR) return value * rates.EUR;
+  return value;
+}
+
 export default function MiniHomePage() {
   const now = new Date();
   const year = now.getFullYear();
@@ -35,6 +43,7 @@ export default function MiniHomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rates, setRates] = useState<ExchangeRates>({ USD: null, EUR: null });
   const [loading, setLoading] = useState(true);
 
   // Link Telegram account on first open
@@ -53,14 +62,16 @@ export default function MiniHomePage() {
     async function load() {
       setLoading(true);
       const bounds = monthBounds(year, month);
-      const [txData, tagList, catList] = await Promise.all([
+      const [txData, tagList, catList, ratesData] = await Promise.all([
         transactionsApi.list({ ...bounds, page_size: 2000 }),
         tagsApi.list(),
         categoriesApi.list(),
+        marketDataApi.exchangeRates().catch(() => ({ USD: null, EUR: null })),
       ]);
       setTransactions(txData.items);
       setTags(tagList);
       setCategories(catList);
+      setRates(ratesData);
       setLoading(false);
     }
     load();
@@ -75,11 +86,11 @@ export default function MiniHomePage() {
 
   const totalIncome = nonInvestment
     .filter((tx) => resolveTag(tx)?.type === "income")
-    .reduce((s, tx) => s + tx.value, 0);
+    .reduce((s, tx) => s + toBRL(tx.value, tx.currency, rates), 0);
 
   const totalOutcome = nonInvestment
     .filter((tx) => resolveTag(tx)?.type === "outcome")
-    .reduce((s, tx) => s + tx.value, 0);
+    .reduce((s, tx) => s + toBRL(tx.value, tx.currency, rates), 0);
 
   const balance = totalIncome - totalOutcome;
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalOutcome) / totalIncome) * 100 : 0;
@@ -137,7 +148,7 @@ export default function MiniHomePage() {
             </p>
           </div>
           {!loading && totalIncome > 0 && (
-            <div className={`flex flex-col items-end`}>
+            <div className="flex flex-col items-end">
               <span className="text-xs text-muted mb-1">Poupança</span>
               <span className={`text-lg font-bold font-mono ${savingsRate >= 0 ? "text-accent" : "text-danger"}`}>
                 {savingsRate.toFixed(1)}%
