@@ -133,7 +133,8 @@ function buildGroups(
   for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date)))
     latestPrice.set(p.symbol, { price: p.price, currency: p.currency });
 
-  const latestRate = sortedRates[sortedRates.length - 1] ?? { USD: 5.0, EUR: 5.5 };
+  const _lr = sortedRates[sortedRates.length - 1];
+  const latestRate = { USD: _lr?.USD ?? 5.0, EUR: _lr?.EUR ?? 5.5 };
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const byTag = new Map<string, Transaction[]>();
@@ -412,8 +413,8 @@ export default function MiniInvestmentsPage() {
           transactionsApi.list({ page_size: 2000 }),
           tagsApi.list(),
           categoriesApi.list(),
-          marketDataApi.exchangeRateHistory().catch(() => [] as typeof rateHist),
-          marketDataApi.assetPriceHistory().catch(() => [] as typeof priceHist),
+          marketDataApi.exchangeRateHistory().catch(() => [] as ExchangeRateHistoryItem[]),
+          marketDataApi.assetPriceHistory().catch(() => [] as AssetPriceHistoryItem[]),
         ]);
 
         const investmentTxs = txData.items.filter((tx) => tx.symbol || tx.index);
