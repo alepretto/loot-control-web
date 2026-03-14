@@ -4,9 +4,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   const supabase = createClient();
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+    return {};
+  }
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -239,6 +245,16 @@ export interface HistoricalLoadResult {
   us_stocks:      { loaded: number; tickers: string[] };
 }
 
+// ─── Agent ────────────────────────────────────────────────────────────────────
+export const agentApi = {
+  chat: (message: string) =>
+    request<{ response: string }>("/agent/chat", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+};
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
 export const adminApi = {
   listJobs: () => request<{ jobs: JobStatus[] }>("/admin/jobs"),
   runJob: (jobId: string) =>
