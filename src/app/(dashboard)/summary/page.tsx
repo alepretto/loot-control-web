@@ -274,8 +274,8 @@ export default function SummaryPage() {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (ctx: { parsed: { x: number } }) =>
-            ` ${formatCurrency(ctx.parsed.x, "BRL")}`,
+          label: (ctx: { parsed: { x: number | null } }) =>
+            ` ${formatCurrency(ctx.parsed.x ?? 0, "BRL")}`,
         },
         backgroundColor: "#141A22",
         borderColor: "#20282F",

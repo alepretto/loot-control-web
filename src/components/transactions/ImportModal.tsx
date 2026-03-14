@@ -125,7 +125,7 @@ function parseCsv(text: string): CsvRow[] {
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/^\uFEFF/, ""));
   return lines.slice(1).filter((l) => l.trim()).map((line) => {
     const values = line.split(",").map((v) => v.trim());
-    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""])) as CsvRow;
+    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""])) as unknown as CsvRow;
   });
 }
 

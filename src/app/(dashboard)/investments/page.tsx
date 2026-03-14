@@ -17,9 +17,11 @@ import { Line, Doughnut, Bar } from "react-chartjs-2";
 import {
   transactionsApi,
   tagsApi,
+  categoriesApi,
   marketDataApi,
   Transaction,
   Tag,
+  Category,
   ExchangeRateHistoryItem,
   AssetPriceHistoryItem,
   CdiRateItem,
@@ -52,6 +54,13 @@ interface TxDetail {
   returnPct: number;
 }
 
+interface ClosedCycle {
+  buysTotal: number;
+  sellsTotal: number;
+  result: number;
+  resultPct: number;
+}
+
 interface SymbolRow {
   symbol: string;
   qty: number;
@@ -60,6 +69,7 @@ interface SymbolRow {
   currentPrice: number | null;
   priceCurrency: string;
   details: TxDetail[]; // for fixed-income drill-down
+  closedCycles: ClosedCycle[];
 }
 
 interface TagGroup {
@@ -152,6 +162,39 @@ function convertToBrl(
   return value;
 }
 
+// ─── Cycle splitter ───────────────────────────────────────────────────────────
+
+function splitCycles(
+  txs: Transaction[],
+  tags: Tag[],
+  sortedRates: { date: string; USD: number; EUR: number }[],
+): { closed: ClosedCycle[]; activeTxs: Transaction[] } {
+  const sorted = [...txs].sort((a, b) =>
+    a.date_transaction.localeCompare(b.date_transaction),
+  );
+  const closed: ClosedCycle[] = [];
+  let buys = 0, sells = 0, qty = 0, activeStart = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const tx = sorted[i];
+    const tag = tags.find((t) => t.id === tx.tag_id);
+    const isIncome = tag?.type === "income";
+    const rate = getRateForDate(sortedRates, tx.date_transaction);
+    const valBrl = convertToBrl(tx.value, tx.currency, rate);
+    if (isIncome) { sells += valBrl; qty -= tx.quantity ?? 0; }
+    else { buys += valBrl; qty += tx.quantity ?? 0; }
+    if (qty <= 0.00001 && buys > 0) {
+      closed.push({
+        buysTotal: buys,
+        sellsTotal: sells,
+        result: sells - buys,
+        resultPct: buys > 0 ? ((sells - buys) / buys) * 100 : 0,
+      });
+      buys = 0; sells = 0; qty = 0; activeStart = i + 1;
+    }
+  }
+  return { closed, activeTxs: sorted.slice(activeStart) };
+}
+
 // ─── Group builder ────────────────────────────────────────────────────────────
 
 const ORDER = ["Crypto", "Ações", "Stocks", "Renda Fixa"];
@@ -159,6 +202,7 @@ const ORDER = ["Crypto", "Ações", "Stocks", "Renda Fixa"];
 function buildGroups(
   txs: Transaction[],
   tags: Tag[],
+  categories: Category[],
   sortedRates: { date: string; USD: number; EUR: number }[],
   priceHistory: AssetPriceHistoryItem[],
   sortedCdi: CdiRateItem[],
@@ -176,7 +220,8 @@ function buildGroups(
   const byTag = new Map<string, Transaction[]>();
   for (const tx of txs) {
     const tag = tags.find((t) => t.id === tx.tag_id);
-    const name = tag?.name ?? "—";
+    const cat = categories.find((c) => c.id === tag?.category_id);
+    const name = cat?.name ?? tag?.name ?? "—";
     if (!byTag.has(name)) byTag.set(name, []);
     byTag.get(name)!.push(tx);
   }
@@ -193,32 +238,44 @@ function buildGroups(
         rendimentoBrl: number;
         qty: number;
         txList: Transaction[];
+        closedCycles: ClosedCycle[];
       }
     >();
 
-    for (const tx of tagTxs) {
-      const tag = tags.find((t) => t.id === tx.tag_id);
-      const isIncome = tag?.type === "income";
-      const sym = tx.symbol ?? tx.index ?? tagName;
-      if (!bySymbol.has(sym))
-        bySymbol.set(sym, {
-          aporteBrl: 0,
-          rendimentoBrl: 0,
-          qty: 0,
-          txList: [],
-        });
-      const agg = bySymbol.get(sym)!;
-      const rate = getRateForDate(sortedRates, tx.date_transaction);
-      const valBrl = convertToBrl(tx.value, tx.currency, rate);
-
-      agg.txList.push(tx);
-      if (isIncome) {
-        agg.qty -= tx.quantity ?? 0;
-        if (isFixedIncome) agg.rendimentoBrl += valBrl;
-        else agg.aporteBrl -= valBrl;
-      } else {
-        agg.qty += tx.quantity ?? 0;
-        agg.aporteBrl += valBrl;
+    if (!isFixedIncome) {
+      // Collect txs per symbol, then split into cycles
+      const txsBySymbol = new Map<string, Transaction[]>();
+      for (const tx of tagTxs) {
+        const sym = tx.symbol ?? tagName;
+        if (!txsBySymbol.has(sym)) txsBySymbol.set(sym, []);
+        txsBySymbol.get(sym)!.push(tx);
+      }
+      for (const [sym, symTxs] of txsBySymbol) {
+        const { closed, activeTxs } = splitCycles(symTxs, tags, sortedRates);
+        let aporteBrl = 0, qty = 0;
+        for (const tx of activeTxs) {
+          const tag = tags.find((t) => t.id === tx.tag_id);
+          const isIncome = tag?.type === "income";
+          const rate = getRateForDate(sortedRates, tx.date_transaction);
+          const valBrl = convertToBrl(tx.value, tx.currency, rate);
+          if (isIncome) { qty -= tx.quantity ?? 0; aporteBrl -= valBrl; }
+          else { qty += tx.quantity ?? 0; aporteBrl += valBrl; }
+        }
+        bySymbol.set(sym, { aporteBrl, rendimentoBrl: 0, qty, txList: activeTxs, closedCycles: closed });
+      }
+    } else {
+      for (const tx of tagTxs) {
+        const tag = tags.find((t) => t.id === tx.tag_id);
+        const isIncome = tag?.type === "income";
+        const sym = tx.symbol ?? tx.index ?? tagName;
+        if (!bySymbol.has(sym))
+          bySymbol.set(sym, { aporteBrl: 0, rendimentoBrl: 0, qty: 0, txList: [], closedCycles: [] });
+        const agg = bySymbol.get(sym)!;
+        const rate = getRateForDate(sortedRates, tx.date_transaction);
+        const valBrl = convertToBrl(tx.value, tx.currency, rate);
+        agg.txList.push(tx);
+        if (isIncome) { agg.qty -= tx.quantity ?? 0; agg.rendimentoBrl += valBrl; }
+        else { agg.qty += tx.quantity ?? 0; agg.aporteBrl += valBrl; }
       }
     }
 
@@ -291,6 +348,7 @@ function buildGroups(
         currentPrice,
         priceCurrency,
         details,
+        closedCycles: agg.closedCycles,
       });
     }
 
@@ -519,10 +577,20 @@ function RetornoBadge({ pct }: { pct: number }) {
   );
 }
 
+// ─── Closed position helper ───────────────────────────────────────────────────
+
+function isClosedRow(row: SymbolRow, isFixedIncome: boolean): boolean {
+  return isFixedIncome ? row.carteiraBrl <= 0 : row.qty <= 0;
+}
+
 // ─── Fixed income table with drill-down ───────────────────────────────────────
 
 function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState(false);
+
+  const openRows = rows.filter((r) => !isClosedRow(r, true));
+  const closedRows = rows.filter((r) => isClosedRow(r, true));
 
   return (
     <table className="w-full">
@@ -539,7 +607,7 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => {
+        {openRows.map((row) => {
           const rend = row.carteiraBrl - row.aporteBrl;
           const retPct = row.aporteBrl > 0 ? (rend / row.aporteBrl) * 100 : 0;
           const isOpen = expanded === row.symbol;
@@ -637,19 +705,46 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
         })}
       </tbody>
       <tfoot>
+        {closedRows.length > 0 && (
+          <>
+            <tr
+              className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
+              onClick={() => setShowClosed((v) => !v)}
+            >
+              <td colSpan={4} className="px-3 py-2 text-xs text-muted">
+                {showClosed ? "▼" : "▶"} {closedRows.length} encerrada{closedRows.length > 1 ? "s" : ""}
+              </td>
+            </tr>
+            {showClosed && closedRows.map((row) => {
+              const resultado = row.carteiraBrl - row.aporteBrl;
+              return (
+                <tr key={row.symbol} className="border-b border-border/50 opacity-50">
+                  <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(row.aporteBrl, "BRL")}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">—</td>
+                  <td className="px-3 py-2 text-sm font-mono text-right">
+                    <span className={resultado >= 0 ? "text-accent" : "text-danger"}>
+                      {resultado >= 0 ? "+" : ""}{formatCurrency(resultado, "BRL")}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </>
+        )}
         <tr className="border-t border-border bg-surface-2">
           <td className="px-3 py-2 text-xs font-semibold text-muted uppercase">
             Total
           </td>
           <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
             {formatCurrency(
-              rows.reduce((s, r) => s + r.aporteBrl, 0),
+              openRows.reduce((s, r) => s + r.aporteBrl, 0),
               "BRL",
             )}
           </td>
           <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
             {formatCurrency(
-              rows.reduce((s, r) => s + r.carteiraBrl, 0),
+              openRows.reduce((s, r) => s + r.carteiraBrl, 0),
               "BRL",
             )}
           </td>
@@ -663,7 +758,15 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
 // ─── Market asset table (crypto / stocks) ─────────────────────────────────────
 
 function MarketTable({ group }: { group: TagGroup }) {
+  const [showClosed, setShowClosed] = useState(false);
+
+  const openRows = group.rows.filter((r) => r.qty > 0);
+  // Flatten all closed cycles from all rows, preserving symbol
+  const allClosed = group.rows.flatMap((r) =>
+    r.closedCycles.map((c) => ({ symbol: r.symbol, ...c })),
+  );
   const usd = group.rows.some((r) => r.priceCurrency === "USD");
+
   return (
     <table className="w-full">
       <thead>
@@ -687,7 +790,7 @@ function MarketTable({ group }: { group: TagGroup }) {
         </tr>
       </thead>
       <tbody className="divide-y divide-border">
-        {group.rows.map((row) => {
+        {openRows.map((row) => {
           const retPct =
             row.aporteBrl > 0
               ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100
@@ -697,10 +800,7 @@ function MarketTable({ group }: { group: TagGroup }) {
               ? (row.carteiraBrl / group.totalCarteira) * 100
               : 0;
           return (
-            <tr
-              key={row.symbol}
-              className="hover:bg-surface-2 transition-colors"
-            >
+            <tr key={row.symbol} className="hover:bg-surface-2 transition-colors">
               <td className="px-3 py-2.5 text-sm font-mono font-semibold text-primary">
                 {row.symbol}
               </td>
@@ -712,29 +812,18 @@ function MarketTable({ group }: { group: TagGroup }) {
                   : "—"}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                {row.qty > 0
-                  ? row.qty % 1 === 0
-                    ? row.qty.toLocaleString("pt-BR")
-                    : row.qty.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 3,
-                        maximumFractionDigits: 5,
-                      })
-                  : "—"}
+                {row.qty % 1 === 0
+                  ? row.qty.toLocaleString("pt-BR")
+                  : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
                 {formatCurrency(row.aporteBrl, "BRL")}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                {row.carteiraBrl > 0
-                  ? formatCurrency(row.carteiraBrl, "BRL")
-                  : "—"}
+                {row.carteiraBrl > 0 ? formatCurrency(row.carteiraBrl, "BRL") : "—"}
               </td>
               <td className="px-3 py-2.5 text-right">
-                {row.carteiraBrl > 0 ? (
-                  <RetornoBadge pct={retPct} />
-                ) : (
-                  <span className="text-xs text-muted">—</span>
-                )}
+                {row.carteiraBrl > 0 ? <RetornoBadge pct={retPct} /> : <span className="text-xs text-muted">—</span>}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
                 {row.carteiraBrl > 0 ? `${Math.round(peso)}%` : "—"}
@@ -744,18 +833,52 @@ function MarketTable({ group }: { group: TagGroup }) {
         })}
       </tbody>
       <tfoot>
+        {allClosed.length > 0 && (
+          <>
+            <tr
+              className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
+              onClick={() => setShowClosed((v) => !v)}
+            >
+              <td colSpan={7} className="px-3 py-2 text-xs text-muted">
+                {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
+              </td>
+            </tr>
+            {showClosed && (
+              <>
+                <tr className="bg-surface-2/50">
+                  {["Símbolo", "Compra", "Venda", "Resultado", "%", "", ""].map((h, i) => (
+                    <td key={i} className={`px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted ${i > 0 ? "text-right" : ""}`}>
+                      {h}
+                    </td>
+                  ))}
+                </tr>
+                {allClosed.map((c, i) => (
+                  <tr key={i} className="border-b border-border/50 opacity-60">
+                    <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{c.symbol}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(c.buysTotal, "BRL")}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(c.sellsTotal, "BRL")}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-right">
+                      <span className={c.result >= 0 ? "text-accent" : "text-danger"}>
+                        {c.result >= 0 ? "+" : ""}{formatCurrency(c.result, "BRL")}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <RetornoBadge pct={c.resultPct} />
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                ))}
+              </>
+            )}
+          </>
+        )}
         <tr className="border-t border-border bg-surface-2">
-          <td
-            colSpan={3}
-            className="px-3 py-2 text-xs font-semibold text-muted uppercase"
-          >
-            Total
+          <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
+          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
+            {formatCurrency(openRows.reduce((s, r) => s + r.aporteBrl, 0), "BRL")}
           </td>
           <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(group.totalAporte, "BRL")}
-          </td>
-          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(group.totalCarteira, "BRL")}
+            {formatCurrency(openRows.reduce((s, r) => s + r.carteiraBrl, 0), "BRL")}
           </td>
           <td colSpan={2} />
         </tr>
@@ -769,6 +892,7 @@ function MarketTable({ group }: { group: TagGroup }) {
 export default function InvestmentsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [rateHistory, setRateHistory] = useState<ExchangeRateHistoryItem[]>([]);
   const [priceHistory, setPriceHistory] = useState<AssetPriceHistoryItem[]>([]);
   const [cdiRates, setCdiRates] = useState<CdiRateItem[]>([]);
@@ -777,14 +901,16 @@ export default function InvestmentsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [txData, tagList, rateHist, priceHist] = await Promise.all([
+      const [txData, tagList, catList, rateHist, priceHist] = await Promise.all([
         transactionsApi.list({ page_size: 2000 }),
         tagsApi.list(),
+        categoriesApi.list(),
         marketDataApi.exchangeRateHistory(),
         marketDataApi.assetPriceHistory(),
       ]);
       setTransactions(txData.items);
       setTags(tagList);
+      setCategories(catList);
       setRateHistory(rateHist);
       setPriceHistory(priceHist);
 
@@ -807,11 +933,14 @@ export default function InvestmentsPage() {
     load();
   }, []);
 
+  const [chartTagFilter, setChartTagFilter] = useState<string[]>([]);
+
   const investmentTxs = transactions.filter((tx) => tx.symbol || tx.index);
   const sortedRates = buildSortedRates(rateHistory);
   const groups = buildGroups(
     investmentTxs,
     tags,
+    categories,
     sortedRates,
     priceHistory,
     cdiRates,
@@ -823,8 +952,18 @@ export default function InvestmentsPage() {
   const retornoPct = totalAporte > 0 ? (retornoTotal / totalAporte) * 100 : 0;
   const latestUsd = sortedRates[sortedRates.length - 1]?.USD ?? null;
 
+  const chartTxs =
+    chartTagFilter.length === 0
+      ? investmentTxs
+      : investmentTxs.filter((tx) => {
+          const tag = tags.find((t) => t.id === tx.tag_id);
+          const cat = categories.find((c) => c.id === tag?.category_id);
+          const groupName = cat?.name ?? tag?.name ?? "—";
+          return chartTagFilter.includes(groupName);
+        });
+
   const portfolioPoints = buildPortfolioChart(
-    investmentTxs,
+    chartTxs,
     tags,
     sortedRates,
     priceHistory,
@@ -881,8 +1020,8 @@ export default function InvestmentsPage() {
         mode: "index" as const,
         intersect: false,
         callbacks: {
-          label: (ctx: { dataset: { label: string }; parsed: { y: number } }) =>
-            ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y, "BRL")}`,
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            ` ${ctx.dataset.label ?? ""}: ${formatCurrency(ctx.parsed.y ?? 0, "BRL")}`,
         },
       },
     },
@@ -956,8 +1095,8 @@ export default function InvestmentsPage() {
       tooltip: {
         ...TOOLTIP_STYLE,
         callbacks: {
-          label: (ctx: { dataset: { label: string }; parsed: { y: number } }) =>
-            ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y, "BRL")}`,
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            ` ${ctx.dataset.label ?? ""}: ${formatCurrency(ctx.parsed.y ?? 0, "BRL")}`,
         },
       },
     },
@@ -1037,9 +1176,62 @@ export default function InvestmentsPage() {
           {/* ── Charts ────────────────────────────────────────────────────── */}
           <div className="space-y-5">
             <div className="bg-surface border border-border rounded-xl p-5">
-              <p className="text-xs uppercase tracking-wider text-muted mb-4">
-                Carteira vs Investido (histórico)
-              </p>
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                <p className="text-xs uppercase tracking-wider text-muted">
+                  Carteira vs Investido (histórico)
+                </p>
+                {groups.length > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {groups.map((g, i) => {
+                      const active = chartTagFilter.includes(g.tagName);
+                      return (
+                        <button
+                          key={g.tagName}
+                          onClick={() =>
+                            setChartTagFilter((prev) =>
+                              active
+                                ? prev.filter((n) => n !== g.tagName)
+                                : [...prev, g.tagName],
+                            )
+                          }
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                            active || chartTagFilter.length === 0
+                              ? "border-transparent text-[#070B11]"
+                              : "border-border bg-transparent text-muted hover:text-text-primary"
+                          }`}
+                          style={
+                            active || chartTagFilter.length === 0
+                              ? {
+                                  backgroundColor:
+                                    GROUP_COLORS[i % GROUP_COLORS.length],
+                                }
+                              : {}
+                          }
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{
+                              background:
+                                active || chartTagFilter.length === 0
+                                  ? "#070B11"
+                                  : GROUP_COLORS[i % GROUP_COLORS.length],
+                            }}
+                          />
+                          {g.tagName}
+                        </button>
+                      );
+                    })}
+                    {chartTagFilter.length > 0 && (
+                      <button
+                        onClick={() => setChartTagFilter([])}
+                        className="px-2 py-1 text-xs text-muted hover:text-text-primary transition-colors"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div style={{ height: 280 }}>
                 {lineData ? (
                   <Line data={lineData} options={lineOptions} />

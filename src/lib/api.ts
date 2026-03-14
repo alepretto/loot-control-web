@@ -145,7 +145,7 @@ export const tagsApi = {
   },
   create: (data: { name: string; category_id: string; type: CategoryType }) =>
     request<Tag>("/finance/tags/", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; type: CategoryType; is_active: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; type: CategoryType; is_active: boolean; category_id: string }>) =>
     request<Tag>(`/finance/tags/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/finance/tags/${id}`, { method: "DELETE" }),
 };
