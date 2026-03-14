@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
@@ -50,12 +50,15 @@ const tabs = [
 
 export default function MiniLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [topInset, setTopInset] = useState(0);
 
   useEffect(() => {
     try {
-      const tg = (window as unknown as { Telegram?: { WebApp?: { ready?: () => void; expand?: () => void } } }).Telegram?.WebApp;
+      const tg = (window as unknown as { Telegram?: { WebApp?: { ready?: () => void; expand?: () => void; contentSafeAreaInset?: { top?: number } } } }).Telegram?.WebApp;
       tg?.ready?.();
       tg?.expand?.();
+      const inset = tg?.contentSafeAreaInset?.top ?? 0;
+      setTopInset(inset);
     } catch {
       // Not running inside Telegram — that's fine
     }
@@ -71,7 +74,7 @@ export default function MiniLayout({ children }: { children: React.ReactNode }) 
         strategy="beforeInteractive"
       />
       <div className="min-h-screen bg-background">
-        <main className="min-h-screen bg-background pb-20" style={{ paddingTop: "var(--tg-content-safe-area-inset-top, 0px)" }}>
+        <main className="min-h-screen bg-background pb-20" style={{ paddingTop: topInset > 0 ? `${topInset}px` : "var(--tg-content-safe-area-inset-top, 0px)" }}>
           {children}
         </main>
 
