@@ -28,12 +28,19 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  if (!user && !pathname.startsWith("/login") && pathname !== "/") {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const isPublicPath = pathname === "/" || pathname === "/login" || pathname === "/mini/login";
+
+  if (!user && !isPublicPath) {
+    const loginPath = pathname.startsWith("/mini") ? "/mini/login" : "/login";
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   if (user && pathname === "/login") {
     return NextResponse.redirect(new URL("/summary", request.url));
+  }
+
+  if (user && pathname === "/mini/login") {
+    return NextResponse.redirect(new URL("/mini", request.url));
   }
 
   return supabaseResponse;
