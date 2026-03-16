@@ -6,7 +6,8 @@ Frontend do **Loot Control** — sistema de acompanhamento de gastos, receitas e
 
 - **Next.js 15** App Router + **TypeScript**
 - **Bun** — gerenciador de pacotes e runtime
-- **TailwindCSS** — dark theme
+- **TailwindCSS** — dark theme com tokens personalizados
+- **Chart.js + react-chartjs-2** — gráficos (Resumo e Investimentos)
 - **Supabase** — autenticação SSR (email/senha)
 
 ## Pré-requisitos
@@ -36,32 +37,50 @@ Aplicação disponível em `http://localhost:3000`.
 
 ## Autenticação
 
-O middleware (`src/middleware.ts`) protege todas as rotas exceto `/login`. O JWT do Supabase é anexado automaticamente em todas as requisições ao backend via `src/lib/api.ts`.
+O middleware (`src/middleware.ts`) protege todas as rotas exceto `/` e `/login`. O JWT do Supabase é anexado automaticamente em todas as requisições ao backend via `src/lib/api.ts`. Em caso de 401 o usuário é redirecionado para `/login`. Após login bem-sucedido, redireciona para `/summary`.
 
-## Telas
+## Rotas
 
-### `/login`
-Login com email e senha via Supabase Auth.
+| Rota           | Acesso    | Descrição                                      |
+|----------------|-----------|------------------------------------------------|
+| `/`            | Público   | Landing page                                   |
+| `/login`       | Público   | Login / cadastro via Supabase                  |
+| `/summary`     | Protegido | Resumo mensal (gastos + investido)             |
+| `/investments` | Protegido | Carteira de investimentos                      |
+| `/transactions`| Protegido | Lançamentos estilo planilha                    |
+| `/tags`        | Protegido | Gestão de famílias, categorias e tags          |
 
 ---
 
-### `/tags` — Famílias, Categorias e Tags
+## Telas
 
-Hierarquia de 3 níveis:
+### `/summary` — Resumo Mensal
 
-```
-Família (ex: Gastos de Casa)
-└── Categoria (outcome | income)
-    └── Tag (ativa/inativa)
-```
+- Navegação por mês/ano com dropdowns e botões ← →
+- **5 KPIs:** Entradas, Saídas, Investido, Saldo, Taxa de Poupança
+- **Layout 2 colunas** (55% gráficos / 45% cards)
+- **Donut (Chart.js):** gastos por família com legenda e total central
+- **Barra horizontal (Chart.js):** top 10 categorias por gasto
+- **Cards de família** (clicáveis para expandir):
+  - Colapsado: lista categorias com valor
+  - Expandido: checklist por tag — ponto verde + valor se pago no mês, cinza se não
+  - Badges: % da renda, variação vs mês anterior (▲▼)
+- Card de entradas por categoria ao final
+- Investimentos excluídos dos gráficos de gastos — aparecem apenas no KPI "Investido"
 
-**Funcionalidades:**
-- Criar/excluir famílias (ex: "Mensalidades", "Lazer", "Investimentos")
-- Criar categorias vinculadas a uma família (opcional)
-- Criar tags dentro de categorias
-- Prevenção de duplicatas: exibe erro se a tag já existe na categoria (HTTP 409)
-- Ativar/desativar tags sem excluí-las
-- Excluir família não remove categorias — apenas remove a vinculação
+---
+
+### `/investments` — Investimentos
+
+- **3 KPIs:** Total Aportado, Nº de Ativos, Classes
+- **Layout 2 colunas** (60% gráficos / 40% tabelas)
+- **Line chart (Chart.js):** evolução do portfólio (valor de mercado vs aportado)
+- **Donut (Chart.js):** alocação por classe com %, valor e legenda
+- **Tabelas por classe:** Crypto, Ações BR, Renda Fixa, Stocks EUA, Outros
+  - Cada tabela mostra: Símbolo, Preço, Qtd, Aporte (R$), Carteira (R$), Retorno, Peso
+  - Ciclos encerrados (compra + venda completa) exibidos colapsados no rodapé
+- **Renda Fixa:** cálculo de CDI acumulado (% do CDI) ou taxa prefixada por transação
+- Classificação automática por símbolo/índice (lookup case-insensitive)
 
 ---
 
@@ -69,65 +88,87 @@ Família (ex: Gastos de Casa)
 
 Tabela estilo planilha.
 
-**Colunas:** Data | Tipo | Categoria | Tag | Valor | Moeda | Qtd | Symbol | Index Rate | Index
+**Colunas:** Data | Família | Categoria | Tag | Valor | Moeda | Qtd | Symbol | Index Rate | Index
 
 **Funcionalidades:**
-- Adicionar transação pela linha superior
-- Double-click em qualquer linha para editar inline
-- Filtros: Categoria → Tag (cascata), Moeda, Período
+- Linha de criação no topo da tabela
+- Double-click em qualquer linha para editar inline (Enter salva, Escape cancela)
+- Filtros: Família → Categoria → Tag (cascata), Moeda, Período (data de/até)
 - Paginação (50 por página)
+- Importação via CSV com modal:
+  - Download de modelo de exemplo
+  - Validação de tipo, moeda e data
+  - Campos obrigatórios para investimentos (`quantity`, `symbol`) e renda fixa (`index_rate`, `index`)
 - Data padrão no fuso horário de Brasília (`America/Sao_Paulo`)
+- Ordenação por `date_transaction DESC`
 
 ---
 
-### `/summary` — Resumo Mensal
+### `/tags` — Famílias, Categorias e Tags
 
-**Funcionalidades:**
-- Navegação por mês/ano (← →)
-- Cards de totais: Entradas, Saídas, Saldo
-- Gastos agrupados por **Família de Tag**
-- Para cada família:
-  - Total gasto no mês
-  - **% da renda** destinada à família
-  - **Variação vs mês anterior** (▲ mais gasto / ▼ menos gasto)
-  - Breakdown por categoria
-- Card de entradas com breakdown por categoria
+Hierarquia de 3 níveis colapsável (▶▼):
 
----
+```
+Família (ex: Moradia)
+└── Categoria (ex: Alimentação)
+    └── Tag (ex: Restaurante)   ← tipo outcome/income está aqui
+```
 
-### `/investments` — Investimentos
+**Funcionalidades por nível:**
 
-**Funcionalidades:**
-- Gráfico de linha: aportes acumulados ao longo do tempo
-- Gráfico de pizza: alocação por classe de ativo
-- Tabelas por classe (crypto, ações BR, renda fixa, ações US)
-- Classificação automática por símbolo/índice
+| Nível     | Ações disponíveis                                             |
+|-----------|---------------------------------------------------------------|
+| Família   | Criar, Excluir (cascade apaga tudo abaixo)                   |
+| Categoria | Criar, Mover (trocar família inline), Excluir (cascade)      |
+| Tag       | Criar, Renomear inline (Enter/Escape), Ativar/Desativar, Excluir (cascade) |
+
+> Excluir qualquer nível apaga em cascata tudo que está abaixo (Família → Categorias → Tags → Transações).
 
 ---
 
-## Paleta (dark theme)
+### `/login`
 
-| Token       | Hex       |
-|-------------|-----------|
-| Background  | `#0f1117` |
-| Surface     | `#1a1d2e` |
-| Surface-2   | `#252840` |
-| Border      | `#2d3154` |
-| Primary     | `#6366f1` |
-| Accent      | `#10b981` |
-| Danger      | `#ef4444` |
-| Muted       | `#6b7280` |
+Login e cadastro com email e senha via Supabase Auth.
+
+---
+
+### `/` — Landing Page
+
+Pública, sem autenticação. Apresenta o produto: hero, problema, features, como funciona, estatísticas e CTA.
+
+---
+
+## Paleta de cores (dark theme)
+
+Todos os componentes usam **tokens Tailwind** — nunca hardcodar hex nos componentes (exceto em configurações de Chart.js).
+
+| Token          | Hex       | Uso                                  |
+|----------------|-----------|--------------------------------------|
+| `background`   | `#070B11` | Fundo da página                      |
+| `surface`      | `#0E1218` | Cards, painéis                       |
+| `surface-2`    | `#141A22` | Headers de cards, hover              |
+| `surface-3`    | `#1C2330` | Hover estados secundários            |
+| `border`       | `#20282F` | Todas as bordas                      |
+| `primary`      | `#2563eb` | Azul — botões, links, gráficos       |
+| `primary-hover`| `#1d4ed8` | Hover do primary                     |
+| `accent`       | `#22c55e` | Verde — income, sucesso, pago        |
+| `danger`       | `#ef4444` | Vermelho — outcome, erro, excluir    |
+| `muted`        | `#8b949e` | Texto secundário                     |
+| `text-primary` | `#e6edf3` | Texto principal                      |
+| `text-secondary`| `#7d8590`| Texto terciário                      |
+
+---
 
 ## API Client (`src/lib/api.ts`)
 
 Ponto central para todos os tipos TypeScript e chamadas à API:
 
-| Export            | Descrição                                    |
-|-------------------|----------------------------------------------|
-| `tagFamiliesApi`  | CRUD de famílias                             |
-| `categoriesApi`   | CRUD de categorias (suporta `family_id`)     |
-| `tagsApi`         | CRUD de tags                                 |
-| `transactionsApi` | CRUD + filtros + paginação de transações     |
-| `usersApi`        | Criação e consulta de usuário                |
+| Export           | Descrição                                                  |
+|------------------|------------------------------------------------------------|
+| `tagFamiliesApi` | CRUD de famílias                                           |
+| `categoriesApi`  | CRUD de categorias (suporta `family_id`)                   |
+| `tagsApi`        | CRUD de tags                                               |
+| `transactionsApi`| CRUD + filtros (família/categoria/tag/moeda/data) + paginação |
+| `marketDataApi`  | Cotações (exchange rates), preços de ativos e CDI histórico |
 
-Todas as requisições anexam automaticamente o JWT do Supabase. Em caso de 401, redireciona para `/login`.
+Todas as requisições anexam automaticamente o JWT do Supabase.

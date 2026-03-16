@@ -139,6 +139,14 @@ export default function SummaryPage() {
   // Investimentos ficam na aba de Investimentos — excluir do Resumo
   const nonInvestmentTxs = transactions.filter((tx) => !tx.symbol && !tx.index);
 
+  // Total investido no mês (aportes outcome; resgates income reduzem o valor)
+  const totalInvested = transactions
+    .filter((tx) => tx.symbol || tx.index)
+    .reduce((s, tx) => {
+      const { tag } = resolveFamily(tx);
+      return tag?.type === "outcome" ? s + tx.value : s - tx.value;
+    }, 0);
+
   // KPI totals
   const totalIncome = nonInvestmentTxs
     .filter((tx) => resolveFamily(tx).tag?.type === "income")
@@ -346,7 +354,7 @@ export default function SummaryPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           {
             label: "Total Entradas",
@@ -358,6 +366,12 @@ export default function SummaryPage() {
             label: "Total Saídas",
             value: formatCurrency(totalOutcome, "BRL"),
             color: "text-danger",
+            sub: null,
+          },
+          {
+            label: "Investido",
+            value: formatCurrency(Math.max(0, totalInvested), "BRL"),
+            color: "text-primary",
             sub: null,
           },
           {
