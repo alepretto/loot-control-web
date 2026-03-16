@@ -209,7 +209,7 @@ function buildGroups(
 ): TagGroup[] {
   const latestPrice = new Map<string, { price: number; currency: string }>();
   for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date)))
-    latestPrice.set(p.symbol, { price: p.price, currency: p.currency });
+    latestPrice.set(p.symbol.toUpperCase(), { price: p.price, currency: p.currency });
 
   const latestRate = sortedRates[sortedRates.length - 1] ?? {
     USD: 5.0,
@@ -274,7 +274,7 @@ function buildGroups(
         const rate = getRateForDate(sortedRates, tx.date_transaction);
         const valBrl = convertToBrl(tx.value, tx.currency, rate);
         agg.txList.push(tx);
-        if (isIncome) { agg.qty -= tx.quantity ?? 0; agg.rendimentoBrl += valBrl; }
+        if (isIncome) { agg.qty -= tx.quantity ?? 0; agg.aporteBrl -= valBrl; }
         else { agg.qty += tx.quantity ?? 0; agg.aporteBrl += valBrl; }
       }
     }
@@ -282,7 +282,7 @@ function buildGroups(
     const rows: SymbolRow[] = [];
 
     for (const [sym, agg] of bySymbol) {
-      const priceEntry = latestPrice.get(sym);
+      const priceEntry = latestPrice.get(sym.toUpperCase());
       const currentPrice = priceEntry?.price ?? null;
       const priceCurrency = priceEntry?.currency ?? "BRL";
 
@@ -325,11 +325,18 @@ function buildGroups(
 
       let carteiraBrl: number;
       if (isFixedIncome) {
-        // Use CDI-calculated value from details (sum of individual CDI accumulations)
-        carteiraBrl =
-          details.length > 0
-            ? details.reduce((s, d) => s + d.currentBrl, 0) + agg.rendimentoBrl
-            : agg.aporteBrl + agg.rendimentoBrl;
+        if (agg.aporteBrl <= 0) {
+          // Fully resgated — position closed
+          carteiraBrl = 0;
+        } else if (details.length > 0) {
+          // Scale CDI-accumulated value by remaining invested ratio
+          const originalAporte = details.reduce((s, d) => s + d.principalBrl, 0);
+          const cdiAccumulated = details.reduce((s, d) => s + d.currentBrl, 0);
+          const ratio = originalAporte > 0 ? Math.min(1, agg.aporteBrl / originalAporte) : 1;
+          carteiraBrl = cdiAccumulated * ratio;
+        } else {
+          carteiraBrl = agg.aporteBrl;
+        }
       } else if (currentPrice !== null && agg.qty > 0) {
         carteiraBrl = convertToBrl(
           agg.qty * currentPrice,
@@ -434,7 +441,7 @@ function buildPortfolioChart(
     if (!priceByDateSym.has(p.date)) priceByDateSym.set(p.date, new Map());
     priceByDateSym
       .get(p.date)!
-      .set(p.symbol, { price: p.price, currency: p.currency });
+      .set(p.symbol.toUpperCase(), { price: p.price, currency: p.currency });
   }
 
   const sortedTxs = [...txs].sort((a, b) =>
@@ -468,9 +475,10 @@ function buildPortfolioChart(
       cumulativeInvested += isIncome ? -valueBrl : valueBrl;
       // Track market qty only for symbol-based txs WITHOUT index (pure market assets)
       if (tx.symbol && !tx.index) {
-        const prev = cumulativeQtys.get(tx.symbol) ?? 0;
+        const symUpper = tx.symbol.toUpperCase();
+        const prev = cumulativeQtys.get(symUpper) ?? 0;
         cumulativeQtys.set(
-          tx.symbol,
+          symUpper,
           isIncome ? prev - (tx.quantity ?? 0) : prev + (tx.quantity ?? 0),
         );
       }
