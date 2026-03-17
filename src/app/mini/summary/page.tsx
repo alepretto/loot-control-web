@@ -68,6 +68,7 @@ function buildFamilyGroups(
   );
 
   for (const cat of categories) {
+    if (!cat.family_id) continue;
     const fam = famMap.get(cat.family_id);
     if (!fam) continue;
     const catGroup: CatGroup = { id: cat.id, name: cat.name, cur: 0, prev: 0, tags: [] };
