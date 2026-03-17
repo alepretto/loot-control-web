@@ -264,17 +264,22 @@ export default function SummaryPage() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 10);
 
+  const barColors = top10Cats.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]);
+
   const barData = {
     labels: top10Cats.map(([name]) => name),
     datasets: [{
-      label: "Gasto (BRL)",
+      label: "Gasto",
       data: top10Cats.map(([, v]) => v),
-      backgroundColor: "rgba(37,99,235,0.7)",
-      borderColor: "#2563eb",
-      borderWidth: 1,
-      borderRadius: 4,
+      backgroundColor: barColors.map((c) => c + "99"),
+      borderColor: barColors,
+      borderWidth: 2,
+      borderRadius: 6,
+      borderSkipped: false,
     }],
   };
+
+  const maxBarValue = Math.max(...top10Cats.map(([, v]) => v), 1);
 
   const barOptions = {
     indexAxis: "y" as const,
@@ -290,21 +295,29 @@ export default function SummaryPage() {
         borderWidth: 1,
         titleColor: "#e6edf3",
         bodyColor: "#8b949e",
+        padding: 10,
       },
     },
     scales: {
       x: {
+        max: maxBarValue * 1.15,
         ticks: {
           color: "#8b949e",
           font: { size: 10 },
-          callback: (v: number | string) =>
-            formatCurrency(Number(v), "BRL").replace("R$\u00a0", "R$ "),
+          callback: (v: number | string) => {
+            const n = Number(v);
+            if (n === 0) return "0";
+            if (n >= 1000) return `R$ ${(n / 1000).toFixed(0)}k`;
+            return `R$ ${n}`;
+          },
         },
-        grid: { color: "#20282F" },
+        grid: { color: "#20282F44" },
+        border: { display: false },
       },
       y: {
-        ticks: { color: "#8b949e", font: { size: 11 } },
-        grid: { color: "transparent" },
+        ticks: { color: "#e6edf3", font: { size: 12 } },
+        grid: { display: false },
+        border: { display: false },
       },
     },
   };
@@ -448,7 +461,7 @@ export default function SummaryPage() {
               {top10Cats.length === 0 ? (
                 <p className="text-sm text-muted text-center py-10">Sem dados.</p>
               ) : (
-                <div style={{ height: Math.max(180, top10Cats.length * 34) }}>
+                <div style={{ height: Math.max(200, top10Cats.length * 44) }}>
                   <Bar
                     data={barData}
                     options={{
@@ -470,10 +483,11 @@ export default function SummaryPage() {
               </p>
             )}
 
-            {familyGroups.map((group) => {
-              const key        = group.familyId ?? "__none__";
-              const isExpanded = expandedFamilies.has(key);
-              const variation  = group.outcome - group.prevOutcome;
+            {familyGroups.map((group, i) => {
+              const key         = group.familyId ?? "__none__";
+              const isExpanded  = expandedFamilies.has(key);
+              const familyColor = DONUT_COLORS[i % DONUT_COLORS.length];
+              const variation   = group.outcome - group.prevOutcome;
               const variationPct =
                 group.prevOutcome > 0
                   ? ((variation / group.prevOutcome) * 100).toFixed(1)
@@ -487,12 +501,17 @@ export default function SummaryPage() {
                 <div
                   key={key}
                   className="bg-surface border border-border rounded-xl overflow-hidden"
+                  style={{ borderLeft: `3px solid ${familyColor}` }}
                 >
                   {/* Family header — clickable to expand */}
                   <button
                     className="w-full flex items-center gap-2 px-4 py-3 bg-surface-2 border-b border-border hover:bg-surface-3 transition-colors text-left"
                     onClick={() => toggleFamily(key)}
                   >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: familyColor }}
+                    />
                     <span className="text-sm font-semibold text-text-primary flex-1 text-left">
                       {group.familyName}
                     </span>
@@ -513,7 +532,7 @@ export default function SummaryPage() {
                       </span>
                     )}
 
-                    <span className="text-sm font-mono font-semibold text-danger">
+                    <span className="text-sm font-mono font-semibold" style={{ color: familyColor }}>
                       -{formatCurrency(group.outcome, "BRL")}
                     </span>
                     <span className="text-muted text-xs ml-1">{isExpanded ? "▲" : "▼"}</span>
