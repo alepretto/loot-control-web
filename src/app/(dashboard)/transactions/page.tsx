@@ -15,7 +15,6 @@ import {
 import { TransactionRow } from "@/components/transactions/TransactionRow";
 import { AddTransactionRow } from "@/components/transactions/AddTransactionRow";
 import { ImportModal } from "@/components/transactions/ImportModal";
-import { Button } from "@/components/ui/Button";
 
 export default function TransactionsPage() {
   const [data, setData] = useState<PaginatedTransactions | null>(null);
