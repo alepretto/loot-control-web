@@ -51,30 +51,39 @@ export default function MiniAdminPage() {
   const [jobs, setJobs] = useState<JobStatus[]>([]);
   const [assets, setAssets] = useState<AssetSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [assetsLoading, setAssetsLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
   const [runResult, setRunResult] = useState<{ jobId: string; message: string } | null>(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const me = await usersApi.me();
-      if (me.role !== "admin") {
-        setIsAdmin(false);
-        return;
+  useEffect(() => {
+    async function loadJobs() {
+      setLoading(true);
+      try {
+        const me = await usersApi.me();
+        if (me.role !== "admin") { setIsAdmin(false); return; }
+        setIsAdmin(true);
+        const jobsRes = await adminApi.listJobs().catch(() => ({ jobs: [] as JobStatus[] }));
+        setJobs(jobsRes.jobs ?? []);
+      } finally {
+        setLoading(false);
       }
-      setIsAdmin(true);
-      const [jobsRes, priceHist] = await Promise.all([
-        adminApi.listJobs().catch(() => ({ jobs: [] as JobStatus[] })),
-        marketDataApi.assetPriceHistory().catch(() => [] as AssetPriceHistoryItem[]),
-      ]);
-      setJobs(jobsRes.jobs ?? []);
-      setAssets(buildAssetSummary(priceHist));
-    } finally {
-      setLoading(false);
     }
-  }
 
-  useEffect(() => { load(); }, []);
+    async function loadAssets() {
+      setAssetsLoading(true);
+      try {
+        const priceHist = await marketDataApi.assetPriceHistory();
+        setAssets(buildAssetSummary(priceHist));
+      } catch {
+        // silently ignore — asset freshness is optional
+      } finally {
+        setAssetsLoading(false);
+      }
+    }
+
+    loadJobs();
+    loadAssets();
+  }, []);
 
   async function runJob(jobId: string) {
     setRunning(jobId);
@@ -82,7 +91,8 @@ export default function MiniAdminPage() {
     try {
       const res = await adminApi.runJob(jobId);
       setRunResult({ jobId, message: res.message ?? res.status });
-      await load();
+      const jobsRes = await adminApi.listJobs().catch(() => ({ jobs: [] as JobStatus[] }));
+      setJobs(jobsRes.jobs ?? []);
     } catch (e: unknown) {
       setRunResult({ jobId, message: e instanceof Error ? e.message : "Erro" });
     } finally {
@@ -166,10 +176,10 @@ export default function MiniAdminPage() {
       </div>
 
       {/* Asset price freshness */}
-      {assets.length > 0 && (
+      {(assetsLoading || assets.length > 0) && (
         <div>
           <p className="text-xs uppercase tracking-wider text-muted mb-3 px-1">
-            Preços de ativos ({assets.length} monitorados)
+            Preços de ativos {assetsLoading ? "(carregando…)" : `(${assets.length} monitorados)`}
           </p>
 
           {/* Summary row */}

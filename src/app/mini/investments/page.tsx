@@ -10,7 +10,7 @@ import {
   Tag,
   Category,
   ExchangeRateHistoryItem,
-  AssetPriceHistoryItem,
+  AssetPriceItem,
   CdiRateItem,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
@@ -128,14 +128,12 @@ function buildGroups(
   tags: Tag[],
   categories: Category[],
   sortedRates: ExchangeRateHistoryItem[],
-  priceHistory: AssetPriceHistoryItem[],
+  latestPrices: AssetPriceItem[],
   sortedCdi: CdiRateItem[],
 ): TagGroup[] {
   const latestPrice = new Map<string, { price: number; currency: string }>();
-  const lastUpdateBySymbol = new Map<string, string>();
-  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date))) {
+  for (const p of latestPrices) {
     latestPrice.set(p.symbol, { price: p.price, currency: p.currency });
-    lastUpdateBySymbol.set(p.symbol, p.date);
   }
 
   const _lr = sortedRates[sortedRates.length - 1];
@@ -253,18 +251,7 @@ function buildGroups(
     const retornoBrl = totalCarteira - totalAporte;
     const retornoPct = totalAporte > 0 ? (retornoBrl / totalAporte) * 100 : 0;
 
-    // Oldest last-update among symbols in this group
-    let oldestLastUpdate: string | null = null;
-    if (!isFixedIncome) {
-      for (const row of rows) {
-        const lu = lastUpdateBySymbol.get(row.symbol.toUpperCase()) ?? lastUpdateBySymbol.get(row.symbol);
-        if (lu) {
-          if (!oldestLastUpdate || lu < oldestLastUpdate) oldestLastUpdate = lu;
-        }
-      }
-    }
-
-    groups.push({ tagName, isFixedIncome, rows, totalAporte, totalCarteira, retornoBrl, retornoPct, oldestLastUpdate, allocationPct: 0 });
+    groups.push({ tagName, isFixedIncome, rows, totalAporte, totalCarteira, retornoBrl, retornoPct, oldestLastUpdate: null, allocationPct: 0 });
   }
 
   const ORDER = ["Crypto", "Ações", "Stocks", "Renda Fixa"];
@@ -443,30 +430,31 @@ export default function MiniInvestmentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [txData, tagList, catList, rateHist, priceHist] = await Promise.all([
+        const [txData, tagList, catList, rateHist, pricesRes] = await Promise.all([
           transactionsApi.list({ page_size: 2000 }),
           tagsApi.list(),
           categoriesApi.list(),
           marketDataApi.exchangeRateHistory().catch(() => [] as ExchangeRateHistoryItem[]),
-          marketDataApi.assetPriceHistory().catch(() => [] as AssetPriceHistoryItem[]),
+          marketDataApi.assetPrices().catch(() => ({ prices: [] as AssetPriceItem[] })),
         ]);
 
         const investmentTxs = txData.items.filter((tx) => tx.symbol || tx.index);
         const sortedRates = buildSortedRates(rateHist);
 
-        // CDI: from earliest fixed-income tx to today
+        // CDI: from earliest fixed-income tx to today (with 8s timeout)
         let cdiRates: CdiRateItem[] = [];
         const fixedTxs = investmentTxs.filter((tx) => tx.index);
         if (fixedTxs.length > 0) {
           const earliest = fixedTxs.map((tx) => tx.date_transaction.slice(0, 10)).sort()[0];
           const today = new Date().toISOString().slice(0, 10);
           try {
-            const cdi = await marketDataApi.cdiHistory(earliest, today);
+            const timeout = new Promise<never>((_, r) => setTimeout(() => r(new Error("timeout")), 8000));
+            const cdi = await Promise.race([marketDataApi.cdiHistory(earliest, today), timeout]);
             cdiRates = cdi.sort((a, b) => a.date.localeCompare(b.date));
           } catch { /* BCB offline — CDI optional */ }
         }
 
-        const built = buildGroups(investmentTxs, tagList, catList, sortedRates, priceHist, cdiRates);
+        const built = buildGroups(investmentTxs, tagList, catList, sortedRates, pricesRes.prices, cdiRates);
         setGroups(built);
       } catch {
         setError("Erro ao carregar investimentos.");
