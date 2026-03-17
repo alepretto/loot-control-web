@@ -80,6 +80,7 @@ interface TagGroup {
   totalCarteira: number;
   retornoBrl: number;
   retornoPct: number;
+  oldestLastUpdate: string | null;
 }
 
 // ─── CDI helpers ──────────────────────────────────────────────────────────────
@@ -208,8 +209,11 @@ function buildGroups(
   sortedCdi: CdiRateItem[],
 ): TagGroup[] {
   const latestPrice = new Map<string, { price: number; currency: string }>();
-  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date)))
+  const lastUpdateBySymbol = new Map<string, string>();
+  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date))) {
     latestPrice.set(p.symbol.toUpperCase(), { price: p.price, currency: p.currency });
+    lastUpdateBySymbol.set(p.symbol.toUpperCase(), p.date);
+  }
 
   const latestRate = sortedRates[sortedRates.length - 1] ?? {
     USD: 5.0,
@@ -366,6 +370,16 @@ function buildGroups(
     const retornoBrl = totalCarteira - totalAporte;
     const retornoPct = totalAporte > 0 ? (retornoBrl / totalAporte) * 100 : 0;
 
+    let oldestLastUpdate: string | null = null;
+    if (!isFixedIncome) {
+      for (const row of rows) {
+        const lu = lastUpdateBySymbol.get(row.symbol.toUpperCase());
+        if (lu !== undefined) {
+          if (oldestLastUpdate === null || lu < oldestLastUpdate) oldestLastUpdate = lu;
+        }
+      }
+    }
+
     groups.push({
       tagName,
       isFixedIncome,
@@ -374,6 +388,7 @@ function buildGroups(
       totalCarteira,
       retornoBrl,
       retornoPct,
+      oldestLastUpdate,
     });
   }
 
@@ -1326,9 +1341,16 @@ export default function InvestmentsPage() {
                 className="bg-surface border border-border rounded-xl overflow-hidden"
               >
                 <div className="flex items-center justify-between px-4 py-3 bg-surface-2 border-b border-border">
-                  <span className="text-sm font-semibold text-text-primary">
-                    {group.tagName}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-text-primary">
+                      {group.tagName}
+                    </span>
+                    {group.oldestLastUpdate ? (
+                      <span className="text-xs text-muted">
+                        · {group.oldestLastUpdate.split("-").reverse().join("/")}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-xs font-mono font-semibold ${group.retornoBrl >= 0 ? "text-accent" : "text-danger"}`}

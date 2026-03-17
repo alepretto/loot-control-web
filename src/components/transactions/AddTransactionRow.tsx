@@ -48,10 +48,10 @@ export function AddTransactionRow({ families, categories, tags, onCreated }: Pro
   const filteredCategories = categories.filter(
     (c) =>
       (form.family_id === "" || c.family_id === form.family_id) &&
-      tags.some((t) => t.type === form.type && t.category_id === c.id)
+      tags.some((t) => t.type === form.type && t.category_id === c.id),
   );
   const filteredTags = tags.filter(
-    (t) => t.type === form.type && (form.category_id === "" || t.category_id === form.category_id)
+    (t) => t.type === form.type && (form.category_id === "" || t.category_id === form.category_id),
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,120 +77,131 @@ export function AddTransactionRow({ families, categories, tags, onCreated }: Pro
   }
 
   const inputCls =
-    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none w-full";
-  const selectCls =
-    "bg-surface border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none";
+    "bg-background border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-primary";
 
   return (
-    <tr className="bg-accent/5 border-t-2 border-accent/30">
-      <td className="px-3 py-1.5">
+    <div className="sticky top-0 z-10 pb-2 bg-background">
+    <div className="bg-surface-2 border border-border rounded-xl px-4 py-3">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 flex-wrap">
         <input
           type="datetime-local"
           value={form.date_transaction}
           onChange={(e) => setForm({ ...form, date_transaction: e.target.value })}
           className={inputCls}
+          style={{ width: 160 }}
         />
-      </td>
-      <td className="px-3 py-1.5">
-        {/* Tipo: filtra categorias e tags disponíveis */}
         <select
           value={form.type}
           onChange={(e) =>
             setForm({ ...form, type: e.target.value as CategoryType, category_id: "", tag_id: "" })
           }
-          className={selectCls}
+          className={inputCls}
+          style={{ width: 80 }}
         >
           <option value="outcome">Saída</option>
           <option value="income">Entrada</option>
         </select>
-      </td>
-      <td className="px-3 py-1.5">
         <select
           value={form.family_id}
-          onChange={(e) => setForm({ ...form, family_id: e.target.value, category_id: "", tag_id: "" })}
-          className={selectCls}
+          onChange={(e) =>
+            setForm({ ...form, family_id: e.target.value, category_id: "", tag_id: "" })
+          }
+          className={inputCls}
+          style={{ width: 110 }}
         >
           <option value="">Família</option>
           {families.map((f) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
           ))}
         </select>
-      </td>
-      <td className="px-3 py-1.5">
-        {/* Categoria: filtrada por família e tipo */}
         <select
           value={form.category_id}
           onChange={(e) => setForm({ ...form, category_id: e.target.value, tag_id: "" })}
-          className={selectCls}
+          className={inputCls}
+          style={{ width: 120 }}
         >
           <option value="">Categoria</option>
           {filteredCategories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
           ))}
         </select>
-      </td>
-      <td className="px-3 py-1.5">
         <select
           value={form.tag_id}
           onChange={(e) => setForm({ ...form, tag_id: e.target.value })}
           disabled={!form.category_id}
-          className={`${selectCls} disabled:opacity-40`}
+          className={`${inputCls} disabled:opacity-40`}
+          style={{ width: 120 }}
         >
           <option value="">Tag</option>
           {filteredTags.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
           ))}
         </select>
-      </td>
-      <td className="px-3 py-1.5">
         <input
           type="number"
-          placeholder="0,00"
+          placeholder="Valor"
           value={form.value}
           onChange={(e) => setForm({ ...form, value: e.target.value })}
           className={`${inputCls} text-right`}
+          style={{ width: 100 }}
         />
-      </td>
-      <td className="px-3 py-1.5">
         <select
           value={form.currency}
           onChange={(e) => setForm({ ...form, currency: e.target.value as Currency })}
-          className={selectCls}
+          className={inputCls}
+          style={{ width: 72 }}
         >
           <option>BRL</option>
           <option>USD</option>
           <option>EUR</option>
         </select>
-      </td>
-      <td className="px-3 py-1.5">
-        <input type="number" placeholder="—" value={form.quantity}
-          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-          className={`${inputCls} text-right`} />
-      </td>
-      <td className="px-3 py-1.5">
-        <input type="text" placeholder="—" value={form.symbol}
+        <input
+          type="text"
+          placeholder="Symbol"
+          value={form.symbol}
           onChange={(e) => setForm({ ...form, symbol: e.target.value })}
-          className={inputCls} />
-      </td>
-      <td className="px-3 py-1.5">
-        <input type="number" placeholder="—" value={form.index_rate}
+          className={inputCls}
+          style={{ width: 72 }}
+        />
+        <input
+          type="number"
+          placeholder="Qtd"
+          value={form.quantity}
+          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+          className={`${inputCls} text-right`}
+          style={{ width: 72 }}
+        />
+        <input
+          type="number"
+          placeholder="Index %"
+          value={form.index_rate}
           onChange={(e) => setForm({ ...form, index_rate: e.target.value })}
-          className={`${inputCls} text-right`} />
-      </td>
-      <td className="px-3 py-1.5">
-        <input type="text" placeholder="—" value={form.index}
+          className={`${inputCls} text-right`}
+          style={{ width: 80 }}
+        />
+        <input
+          type="text"
+          placeholder="Índice"
+          value={form.index}
           onChange={(e) => setForm({ ...form, index: e.target.value })}
-          className={inputCls} />
-      </td>
-      <td className="px-3 py-1.5">
+          className={inputCls}
+          style={{ width: 72 }}
+        />
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={saving || !form.tag_id || !form.value}
-          className="text-accent text-xs font-medium hover:underline disabled:opacity-40 whitespace-nowrap"
+          className="ml-auto px-4 py-1.5 bg-accent text-background text-xs font-semibold rounded hover:bg-accent/90 disabled:opacity-40 whitespace-nowrap"
         >
-          + Add
+          + Adicionar
         </button>
-      </td>
-    </tr>
+      </form>
+    </div>
+    </div>
   );
 }

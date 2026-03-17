@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Transaction, Category, Tag, TagFamily, transactionsApi } from "@/lib/api";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 interface Props {
   transaction: Transaction;
@@ -11,6 +11,17 @@ interface Props {
   tags: Tag[];
   onUpdated: () => void;
   onDeleted: () => void;
+}
+
+const MONTHS_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function cardDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    month: MONTHS_PT[d.getMonth()],
+    year: d.getFullYear(),
+  };
 }
 
 export function TransactionRow({ transaction, families, categories, tags, onUpdated, onDeleted }: Props) {
@@ -22,6 +33,18 @@ export function TransactionRow({ transaction, families, categories, tags, onUpda
   const category = categories.find((c) => c.id === tag?.category_id);
   const family = families.find((f) => f.id === category?.family_id);
   const isIncome = tag?.type === "income";
+
+  const [draftFamilyId, setDraftFamilyId] = useState(family?.id ?? "");
+  const [draftCategoryId, setDraftCategoryId] = useState(category?.id ?? "");
+
+  const editCategories = draftFamilyId
+    ? categories.filter((c) => c.family_id === draftFamilyId)
+    : categories;
+  const editTags = draftCategoryId
+    ? tags.filter((t) => t.category_id === draftCategoryId)
+    : draftFamilyId
+    ? tags.filter((t) => editCategories.some((c) => c.id === t.category_id))
+    : tags;
 
   async function save() {
     setSaving(true);
@@ -49,148 +72,202 @@ export function TransactionRow({ transaction, families, categories, tags, onUpda
     onDeleted();
   }
 
-  const cellCls = "px-3 py-1.5 text-sm border-b border-r border-border";
   const inputCls =
-    "bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none w-full";
+    "bg-background border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-primary";
 
+  // ── View mode ────────────────────────────────────────────────────────────────
   if (!editing) {
+    const { day, month, year } = cardDate(transaction.date_transaction);
+    const breadcrumb = [family?.name, category?.name].filter(Boolean).join(" · ");
+
     return (
-      <tr onDoubleClick={() => setEditing(true)} className="cursor-default group hover:bg-surface-2">
-        <td className={`${cellCls} font-mono text-xs text-muted`}>
-          {formatDate(transaction.date_transaction)}
-        </td>
-        <td className={cellCls}>
-          <span
-            className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-              isIncome
-                ? "bg-accent/20 text-accent"
-                : "bg-danger/20 text-danger"
-            }`}
+      <div
+        onDoubleClick={() => setEditing(true)}
+        className="bg-surface border border-border rounded-xl px-4 py-3 hover:bg-surface-2 hover:border-surface-3 transition-colors cursor-default group"
+      >
+        <div className="flex items-center gap-4">
+          {/* Date block */}
+          <div className="w-10 flex-shrink-0 text-center select-none">
+            <div className="text-2xl font-bold text-text-primary leading-none tabular-nums">{day}</div>
+            <div className="text-[10px] text-muted uppercase tracking-wide mt-0.5">{month}</div>
+            <div className="text-[10px] text-muted">{year}</div>
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-10 bg-border flex-shrink-0" />
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Row 1: tag + value */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isIncome ? "bg-accent" : "bg-danger"}`} />
+                <span className="text-sm font-medium text-text-primary truncate">{tag?.name ?? "—"}</span>
+                {transaction.symbol && (
+                  <span className="flex-shrink-0 text-xs font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
+                    {transaction.symbol}
+                    {transaction.quantity != null ? ` · ${transaction.quantity}` : ""}
+                  </span>
+                )}
+                {!transaction.symbol && transaction.index && (
+                  <span className="flex-shrink-0 text-xs font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
+                    {transaction.index}
+                    {transaction.index_rate != null ? ` ${transaction.index_rate}%` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`font-mono text-sm font-semibold tabular-nums ${isIncome ? "text-accent" : "text-text-primary"}`}>
+                  {isIncome ? "+" : ""}
+                  {formatCurrency(transaction.value, transaction.currency)}
+                </span>
+                {transaction.currency !== "BRL" && (
+                  <span className="text-[10px] font-medium text-muted bg-surface-3 border border-border px-1.5 py-0.5 rounded">
+                    {transaction.currency}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: breadcrumb */}
+            {breadcrumb && (
+              <div className="text-xs text-muted mt-0.5 ml-3.5 truncate">{breadcrumb}</div>
+            )}
+          </div>
+
+          {/* Delete (hover) */}
+          <button
+            onClick={remove}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-danger text-xs flex-shrink-0 w-4 text-center"
           >
-            {isIncome ? "Entrada" : "Saída"}
-          </span>
-        </td>
-        <td className={`${cellCls} text-muted`}>{family?.name ?? "—"}</td>
-        <td className={`${cellCls} text-muted`}>{category?.name ?? "—"}</td>
-        <td className={cellCls}>{tag?.name ?? "—"}</td>
-        <td className={`${cellCls} font-mono text-right`}>
-          <span className={isIncome ? "text-accent" : "text-text-primary"}>
-            {formatCurrency(transaction.value, transaction.currency)}
-          </span>
-        </td>
-        <td className={`${cellCls} text-muted`}>{transaction.currency}</td>
-        <td className={`${cellCls} font-mono text-right text-muted`}>
-          {transaction.quantity ?? ""}
-        </td>
-        <td className={`${cellCls} text-muted`}>{transaction.symbol ?? ""}</td>
-        <td className={`${cellCls} font-mono text-right text-muted`}>
-          {transaction.index_rate ?? ""}
-        </td>
-        <td className={`${cellCls} text-muted`}>{transaction.index ?? ""}</td>
-        <td className={`${cellCls} opacity-0 group-hover:opacity-100 transition-opacity`}>
-          <button onClick={remove} className="text-danger text-xs hover:underline">
             ✕
           </button>
-        </td>
-      </tr>
+        </div>
+      </div>
     );
   }
 
+  // ── Edit mode ────────────────────────────────────────────────────────────────
   return (
-    <tr className="bg-primary/5">
-      <td className={cellCls}>
+    <div className="bg-primary/5 border border-primary/30 rounded-xl px-4 py-3">
+      <div className="flex items-center gap-2 flex-wrap">
         <input
           type="datetime-local"
           value={draft.date_transaction.slice(0, 16)}
           onChange={(e) => setDraft({ ...draft, date_transaction: e.target.value })}
           className={inputCls}
+          style={{ width: 160 }}
         />
-      </td>
-      <td className={cellCls} colSpan={3}>
+        <select
+          value={draftFamilyId}
+          onChange={(e) => {
+            setDraftFamilyId(e.target.value);
+            setDraftCategoryId("");
+            setDraft({ ...draft, tag_id: "" });
+          }}
+          className={inputCls}
+          style={{ width: 110 }}
+        >
+          <option value="">Família</option>
+          {families.map((f) => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </select>
+        <select
+          value={draftCategoryId}
+          onChange={(e) => {
+            setDraftCategoryId(e.target.value);
+            setDraft({ ...draft, tag_id: "" });
+          }}
+          className={inputCls}
+          style={{ width: 120 }}
+        >
+          <option value="">Categoria</option>
+          {editCategories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
         <select
           value={draft.tag_id}
           onChange={(e) => setDraft({ ...draft, tag_id: e.target.value })}
-          className="bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none"
+          disabled={!draftCategoryId}
+          className={`${inputCls} disabled:opacity-40`}
+          style={{ width: 120 }}
         >
-          {tags.map((t) => {
-            const cat = categories.find((c) => c.id === t.category_id);
-            return (
-              <option key={t.id} value={t.id}>
-                {cat?.name} / {t.name}
-              </option>
-            );
-          })}
+          <option value="">Tag</option>
+          {editTags.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
         </select>
-      </td>
-      <td className={cellCls}>
         <input
           type="number"
           value={draft.value}
           onChange={(e) => setDraft({ ...draft, value: parseFloat(e.target.value) })}
-          className={`${inputCls} text-right w-24`}
+          className={`${inputCls} text-right`}
+          style={{ width: 100 }}
         />
-      </td>
-      <td className={cellCls}>
         <select
           value={draft.currency}
-          onChange={(e) =>
-            setDraft({ ...draft, currency: e.target.value as Transaction["currency"] })
-          }
-          className="bg-background border border-primary rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none"
+          onChange={(e) => setDraft({ ...draft, currency: e.target.value as Transaction["currency"] })}
+          className={inputCls}
+          style={{ width: 72 }}
         >
           {["BRL", "USD", "EUR"].map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
-      </td>
-      <td className={cellCls}>
+        <input
+          type="text"
+          placeholder="Symbol"
+          value={draft.symbol ?? ""}
+          onChange={(e) => setDraft({ ...draft, symbol: e.target.value || null })}
+          className={inputCls}
+          style={{ width: 72 }}
+        />
         <input
           type="number"
-          placeholder="—"
+          placeholder="Qtd"
           value={draft.quantity ?? ""}
           onChange={(e) =>
             setDraft({ ...draft, quantity: e.target.value ? parseFloat(e.target.value) : null })
           }
-          className={`${inputCls} text-right w-16`}
+          className={`${inputCls} text-right`}
+          style={{ width: 72 }}
         />
-      </td>
-      <td className={cellCls}>
-        <input
-          type="text"
-          placeholder="—"
-          value={draft.symbol ?? ""}
-          onChange={(e) => setDraft({ ...draft, symbol: e.target.value || null })}
-          className={`${inputCls} w-16`}
-        />
-      </td>
-      <td className={cellCls}>
         <input
           type="number"
-          placeholder="—"
+          placeholder="Index %"
           value={draft.index_rate ?? ""}
           onChange={(e) =>
             setDraft({ ...draft, index_rate: e.target.value ? parseFloat(e.target.value) : null })
           }
-          className={`${inputCls} text-right w-20`}
+          className={`${inputCls} text-right`}
+          style={{ width: 80 }}
         />
-      </td>
-      <td className={cellCls}>
         <input
           type="text"
-          placeholder="—"
+          placeholder="Índice"
           value={draft.index ?? ""}
           onChange={(e) => setDraft({ ...draft, index: e.target.value || null })}
-          className={`${inputCls} w-16`}
+          className={inputCls}
+          style={{ width: 72 }}
         />
-      </td>
-      <td className={`${cellCls} flex gap-2 py-2`}>
-        <button onClick={save} disabled={saving} className="text-accent text-xs hover:underline">
-          ✓
-        </button>
-        <button onClick={() => setEditing(false)} className="text-text-secondary text-xs hover:underline">
-          ✕
-        </button>
-      </td>
-    </tr>
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="px-3 py-1 bg-accent/20 text-accent text-xs font-medium rounded hover:bg-accent/30 disabled:opacity-40"
+          >
+            Salvar
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            className="px-3 py-1 bg-surface-3 text-muted text-xs rounded hover:text-text-primary"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
