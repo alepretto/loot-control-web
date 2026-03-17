@@ -122,59 +122,42 @@ function ProgressBar({ value, max, color = "bg-danger" }: { value: number; max: 
   );
 }
 
-function TagRowItem({ tag, famTotal }: { tag: TagRow; famTotal: number }) {
+function TagRowItem({ tag }: { tag: TagRow }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 min-h-[40px]">
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className="w-1 h-1 rounded-full bg-danger/50 flex-shrink-0" />
-        <span className="text-xs text-text-secondary truncate">{tag.name}</span>
-      </div>
+    <div className="flex items-center justify-between pl-10 pr-4 py-2 min-h-[36px]">
+      <span className="text-xs text-text-secondary truncate">{tag.name}</span>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-        <MoM cur={tag.cur} prev={tag.prev} />
-        <span className="text-xs font-mono text-text-primary">{formatCurrency(tag.cur, "BRL")}</span>
-        <span className="text-[10px] text-muted w-8 text-right">
-          {famTotal > 0 ? `${((tag.cur / famTotal) * 100).toFixed(0)}%` : ""}
-        </span>
+        {tag.prev > 0 && <MoM cur={tag.cur} prev={tag.prev} />}
+        <span className="text-xs font-mono text-muted">{formatCurrency(tag.cur, "BRL")}</span>
       </div>
     </div>
   );
 }
 
-function CatGroupItem({
-  cat,
-  famTotal,
-  maxCat,
-}: {
-  cat: CatGroup;
-  famTotal: number;
-  maxCat: number;
-}) {
+function CatGroupItem({ cat, famTotal }: { cat: CatGroup; famTotal: number }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] active:bg-surface-3 transition-colors"
+        className="w-full flex items-center justify-between pl-6 pr-4 py-3 min-h-[44px] active:bg-surface-3 transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className={`text-[10px] transition-transform ${open ? "rotate-90" : ""} text-muted`}>▶</span>
-          <span className="text-xs font-medium text-text-primary truncate">{cat.name}</span>
+          <span className="text-xs font-medium text-text-secondary truncate">{cat.name}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           <MoM cur={cat.cur} prev={cat.prev} />
           <span className="text-xs font-mono text-text-primary">{formatCurrency(cat.cur, "BRL")}</span>
-          <span className="text-[10px] text-muted w-8 text-right">
+          <span className="text-[10px] text-muted w-7 text-right">
             {famTotal > 0 ? `${((cat.cur / famTotal) * 100).toFixed(0)}%` : ""}
           </span>
         </div>
       </button>
-      <div className="px-4 pb-1">
-        <ProgressBar value={cat.cur} max={maxCat} />
-      </div>
       {open && (
-        <div className="divide-y divide-border/50 border-t border-border/50">
+        <div className="divide-y divide-border/30 bg-surface-2/50">
           {cat.tags.map((tag) => (
-            <TagRowItem key={tag.id} tag={tag} famTotal={famTotal} />
+            <TagRowItem key={tag.id} tag={tag} />
           ))}
         </div>
       )}
@@ -193,7 +176,6 @@ function FamGroupCard({
 }) {
   const [open, setOpen] = useState(false);
   const pctOfIncome = incomeRef > 0 ? (group.cur / incomeRef) * 100 : 0;
-  const maxCat = Math.max(...group.cats.map((c) => c.cur), 0);
 
   return (
     <div className="bg-surface border border-border rounded-2xl overflow-hidden">
@@ -226,7 +208,7 @@ function FamGroupCard({
       {open && (
         <div className="border-t border-border divide-y divide-border">
           {group.cats.map((cat) => (
-            <CatGroupItem key={cat.id} cat={cat} famTotal={group.cur} maxCat={maxCat} />
+            <CatGroupItem key={cat.id} cat={cat} famTotal={group.cur} />
           ))}
         </div>
       )}
