@@ -89,6 +89,8 @@ interface TagGroup {
   totalCarteira: number;
   retornoBrl: number;
   retornoPct: number;
+  oldestLastUpdate: string | null;
+  allocationPct: number; // filled after all groups are built
 }
 
 function splitCycles(
@@ -130,8 +132,11 @@ function buildGroups(
   sortedCdi: CdiRateItem[],
 ): TagGroup[] {
   const latestPrice = new Map<string, { price: number; currency: string }>();
-  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date)))
+  const lastUpdateBySymbol = new Map<string, string>();
+  for (const p of [...priceHistory].sort((a, b) => a.date.localeCompare(b.date))) {
     latestPrice.set(p.symbol, { price: p.price, currency: p.currency });
+    lastUpdateBySymbol.set(p.symbol, p.date);
+  }
 
   const _lr = sortedRates[sortedRates.length - 1];
   const latestRate = { USD: _lr?.USD ?? 5.0, EUR: _lr?.EUR ?? 5.5 };
@@ -248,7 +253,18 @@ function buildGroups(
     const retornoBrl = totalCarteira - totalAporte;
     const retornoPct = totalAporte > 0 ? (retornoBrl / totalAporte) * 100 : 0;
 
-    groups.push({ tagName, isFixedIncome, rows, totalAporte, totalCarteira, retornoBrl, retornoPct });
+    // Oldest last-update among symbols in this group
+    let oldestLastUpdate: string | null = null;
+    if (!isFixedIncome) {
+      for (const row of rows) {
+        const lu = lastUpdateBySymbol.get(row.symbol.toUpperCase()) ?? lastUpdateBySymbol.get(row.symbol);
+        if (lu) {
+          if (!oldestLastUpdate || lu < oldestLastUpdate) oldestLastUpdate = lu;
+        }
+      }
+    }
+
+    groups.push({ tagName, isFixedIncome, rows, totalAporte, totalCarteira, retornoBrl, retornoPct, oldestLastUpdate, allocationPct: 0 });
   }
 
   const ORDER = ["Crypto", "Ações", "Stocks", "Renda Fixa"];
@@ -256,6 +272,12 @@ function buildGroups(
     const ia = ORDER.indexOf(a.tagName), ib = ORDER.indexOf(b.tagName);
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
   });
+
+  // Fill allocation %
+  const totalAll = groups.reduce((s, g) => s + (g.totalCarteira || g.totalAporte), 0);
+  for (const g of groups) {
+    g.allocationPct = totalAll > 0 ? ((g.totalCarteira || g.totalAporte) / totalAll) * 100 : 0;
+  }
 
   return groups;
 }
@@ -289,16 +311,28 @@ function GroupCard({ group }: { group: TagGroup }) {
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px] active:bg-surface-2 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <span className={`text-xs transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-xs transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`}>▶</span>
           <span className="text-sm font-semibold text-text-primary">{group.tagName}</span>
-          <span className="text-xs text-muted">({openRows.length})</span>
+          <span className="text-xs text-muted flex-shrink-0">({openRows.length})</span>
+          {group.allocationPct > 0 && (
+            <span className="text-[10px] text-muted bg-surface-3 px-1.5 py-0.5 rounded-full flex-shrink-0">
+              {group.allocationPct.toFixed(0)}%
+            </span>
+          )}
         </div>
-        <div className="flex flex-col items-end gap-0.5">
+        <div className="flex flex-col items-end gap-0.5 flex-shrink-0 ml-2">
           <span className="text-sm font-mono text-text-primary">
             {group.totalCarteira > 0 ? formatCurrency(group.totalCarteira, "BRL") : formatCurrency(group.totalAporte, "BRL")}
           </span>
-          {group.totalCarteira > 0 && <RetornoBadge pct={group.retornoPct} />}
+          <div className="flex items-center gap-1.5">
+            {group.totalCarteira > 0 && <RetornoBadge pct={group.retornoPct} />}
+            {group.oldestLastUpdate && (
+              <span className="text-[10px] text-muted">
+                {group.oldestLastUpdate.split("-").reverse().join("/")}
+              </span>
+            )}
+          </div>
         </div>
       </button>
 

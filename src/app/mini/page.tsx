@@ -8,6 +8,7 @@ import {
   categoriesApi,
   marketDataApi,
   miniApi,
+  usersApi,
   Transaction,
   Tag,
   Category,
@@ -45,6 +46,11 @@ export default function MiniHomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [rates, setRates] = useState<ExchangeRates>({ USD: null, EUR: null });
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    usersApi.me().then((u) => setIsAdmin(u.role === "admin")).catch(() => {});
+  }, []);
 
   // Link Telegram account on first open
   useEffect(() => {
@@ -189,6 +195,32 @@ export default function MiniHomePage() {
               );
             })}
           </div>
+        )}
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/mini/tags"
+          className="flex items-center gap-3 bg-surface border border-border rounded-2xl px-4 py-3 active:bg-surface-2 transition-colors"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted flex-shrink-0">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          <span className="text-sm text-text-secondary">Gerenciar tags</span>
+        </Link>
+        {isAdmin && (
+          <Link
+            href="/mini/admin"
+            className="flex items-center gap-3 bg-surface border border-primary/30 rounded-2xl px-4 py-3 active:bg-surface-2 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-primary flex-shrink-0">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14" />
+            </svg>
+            <span className="text-sm text-primary">Admin</span>
+          </Link>
         )}
       </div>
 

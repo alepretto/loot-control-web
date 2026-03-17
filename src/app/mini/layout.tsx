@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
-import { usersApi } from "@/lib/api";
 
-const baseTabs = [
+const tabs = [
   {
     href: "/mini",
     label: "Início",
@@ -39,7 +38,7 @@ const baseTabs = [
   },
   {
     href: "/mini/investments",
-    label: "Invest.",
+    label: "Investimentos",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -47,33 +46,11 @@ const baseTabs = [
       </svg>
     ),
   },
-  {
-    href: "/mini/tags",
-    label: "Tags",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
-        <line x1="7" y1="7" x2="7.01" y2="7" />
-      </svg>
-    ),
-  },
 ];
-
-const adminTab = {
-  href: "/mini/admin",
-  label: "Admin",
-  icon: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14" />
-    </svg>
-  ),
-};
 
 export default function MiniLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [topInset, setTopInset] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     try {
@@ -87,12 +64,6 @@ export default function MiniLayout({ children }: { children: React.ReactNode }) 
       // Not running inside Telegram — that's fine
     }
   }, []);
-
-  useEffect(() => {
-    usersApi.me().then((u) => setIsAdmin(u.role === "admin")).catch(() => {});
-  }, []);
-
-  const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
 
   // Don't show the tab bar on the login page
   const showTabs = pathname !== "/mini/login";
