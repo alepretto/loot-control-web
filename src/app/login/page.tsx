@@ -77,7 +77,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/transactions");
+    router.push("/onboarding");
   }
 
   return (

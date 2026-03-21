@@ -22,8 +22,8 @@ import {
   Tag,
   TagFamily,
 } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
+import { useSettings } from "@/contexts/SettingsContext";
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
@@ -74,6 +74,7 @@ const DONUT_COLORS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SummaryPage() {
+  const { displayCurrency, convertToDisplay } = useSettings();
   const now = new Date();
   const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -86,7 +87,6 @@ export default function SummaryPage() {
   const [families,    setFamilies]    = useState<TagFamily[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [expandedFamilies, setExpandedFamilies] = useState<Set<string>>(new Set());
-  const [showTxList, setShowTxList] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -144,17 +144,18 @@ export default function SummaryPage() {
     .filter((tx) => tx.symbol || tx.index)
     .reduce((s, tx) => {
       const { tag } = resolveFamily(tx);
-      return tag?.type === "outcome" ? s + tx.value : s - tx.value;
+      const v = convertToDisplay(tx.value, tx.currency);
+      return tag?.type === "outcome" ? s + v : s - v;
     }, 0);
 
   // KPI totals
   const totalIncome = nonInvestmentTxs
     .filter((tx) => resolveFamily(tx).tag?.type === "income")
-    .reduce((s, tx) => s + tx.value, 0);
+    .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
 
   const totalOutcome = nonInvestmentTxs
     .filter((tx) => resolveFamily(tx).tag?.type === "outcome")
-    .reduce((s, tx) => s + tx.value, 0);
+    .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
 
   const balance = totalIncome - totalOutcome;
   const savingsRate = totalIncome > 0
@@ -169,7 +170,7 @@ export default function SummaryPage() {
       const { tag, familyId } = resolveFamily(tx);
       if (tag?.type === "income") continue;
       const key = familyId ?? "__none__";
-      map[key] = (map[key] ?? 0) + tx.value;
+      map[key] = (map[key] ?? 0) + convertToDisplay(tx.value, tx.currency);
     }
     return map;
   }
@@ -185,7 +186,7 @@ export default function SummaryPage() {
       if ((cat?.family_id ?? null) !== familyId) continue;
       const catId = cat?.id ?? "__no_cat__";
       if (!map[catId]) map[catId] = { catId, name: cat?.name ?? "—", value: 0 };
-      map[catId].value += tx.value;
+      map[catId].value += convertToDisplay(tx.value, tx.currency);
     }
     return Object.values(map).sort((a, b) => b.value - a.value);
   }
@@ -213,7 +214,7 @@ export default function SummaryPage() {
     const { tag, cat } = resolveFamily(tx);
     if (tag?.type !== "income") continue;
     const name = cat?.name ?? "—";
-    incomeByCategory[name] = (incomeByCategory[name] ?? 0) + tx.value;
+    incomeByCategory[name] = (incomeByCategory[name] ?? 0) + convertToDisplay(tx.value, tx.currency);
   }
   const incomeCats = Object.entries(incomeByCategory)
     .sort(([, a], [, b]) => b - a);
@@ -241,7 +242,7 @@ export default function SummaryPage() {
       tooltip: {
         callbacks: {
           label: (ctx: { label: string; parsed: number }) =>
-            ` ${ctx.label}: ${formatCurrency(ctx.parsed, "BRL")}`,
+            ` ${ctx.label}: ${formatCurrency(ctx.parsed, displayCurrency)}`,
         },
         backgroundColor: "#141A22",
         borderColor: "#20282F",
@@ -258,7 +259,7 @@ export default function SummaryPage() {
     const { tag, cat } = resolveFamily(tx);
     if (tag?.type === "income") continue;
     const name = cat?.name ?? "—";
-    catSpending[name] = (catSpending[name] ?? 0) + tx.value;
+    catSpending[name] = (catSpending[name] ?? 0) + convertToDisplay(tx.value, tx.currency);
   }
   const top10Cats = Object.entries(catSpending)
     .sort(([, a], [, b]) => b - a)
@@ -288,7 +289,7 @@ export default function SummaryPage() {
       tooltip: {
         callbacks: {
           label: (ctx: { parsed: { x: number | null } }) =>
-            ` ${formatCurrency(ctx.parsed.x ?? 0, "BRL")}`,
+            ` ${formatCurrency(ctx.parsed.x ?? 0, displayCurrency)}`,
         },
         backgroundColor: "#141A22",
         borderColor: "#20282F",
@@ -307,8 +308,9 @@ export default function SummaryPage() {
           callback: (v: number | string) => {
             const n = Number(v);
             if (n === 0) return "0";
-            if (n >= 1000) return `R$ ${(n / 1000).toFixed(0)}k`;
-            return `R$ ${n}`;
+            const sym = displayCurrency === "BRL" ? "R$" : displayCurrency === "USD" ? "$" : "€";
+            if (n >= 1000) return `${sym}${(n / 1000).toFixed(0)}k`;
+            return `${sym}${n.toFixed(0)}`;
           },
         },
         grid: { color: "#20282F44" },
@@ -324,93 +326,101 @@ export default function SummaryPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const kpis = [
+    { label: "Entradas",         value: formatCurrency(totalIncome, displayCurrency),              color: "text-accent",   accent: "border-accent/40" },
+    { label: "Saídas",           value: formatCurrency(totalOutcome, displayCurrency),             color: "text-danger",   accent: "border-danger/40" },
+    { label: "Investido",        value: formatCurrency(Math.max(0, totalInvested), displayCurrency), color: "text-primary", accent: "border-primary/40" },
+    { label: "Saldo",            value: formatCurrency(balance, displayCurrency),                   color: balance >= 0 ? "text-accent" : "text-danger", accent: balance >= 0 ? "border-accent/40" : "border-danger/40" },
+    { label: "Taxa de Poupança", value: `${savingsRate.toFixed(1)}%`,                               color: "text-primary",  accent: "border-primary/40" },
+  ];
+
   return (
-    <div className="px-6 py-5 space-y-6">
+    <div className="px-4 md:px-6 py-5 space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-lg font-semibold text-text-primary">Resumo Financeiro</h1>
-        <div className="flex items-center gap-2">
+        <div>
+          <h1 className="text-lg font-semibold text-text-primary">Resumo Financeiro</h1>
+          <p className="text-xs text-muted mt-0.5">
+            {MONTHS[selectedMonth - 1]} {selectedYear}
+          </p>
+        </div>
+
+        {/* Month navigator */}
+        <div className="flex items-center bg-surface border border-border rounded-xl overflow-hidden">
           <button
             onClick={prevMonth}
-            className="text-muted hover:text-text-primary transition-colors p-1.5 rounded hover:bg-surface-2"
+            className="px-3 py-2 text-muted hover:text-text-primary hover:bg-surface-2 transition-colors border-r border-border"
             title="Mês anterior"
           >
-            ←
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </button>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-primary"
-          >
-            {MONTHS.map((name, i) => (
-              <option key={i + 1} value={i + 1}>{name}</option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-primary"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1 px-1">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="bg-transparent text-sm text-text-primary focus:outline-none py-2 px-2 cursor-pointer appearance-none"
+            >
+              {MONTHS.map((name, i) => (
+                <option key={i + 1} value={i + 1} className="bg-surface">{name}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-transparent text-sm text-muted focus:outline-none py-2 pr-2 cursor-pointer appearance-none"
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y} className="bg-surface">{y}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={nextMonth}
-            className="text-muted hover:text-text-primary transition-colors p-1.5 rounded hover:bg-surface-2"
+            className="px-3 py-2 text-muted hover:text-text-primary hover:bg-surface-2 transition-colors border-l border-border"
             title="Próximo mês"
           >
-            →
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </button>
         </div>
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          {
-            label: "Total Entradas",
-            value: formatCurrency(totalIncome, "BRL"),
-            color: "text-accent",
-            sub: null,
-          },
-          {
-            label: "Total Saídas",
-            value: formatCurrency(totalOutcome, "BRL"),
-            color: "text-danger",
-            sub: null,
-          },
-          {
-            label: "Investido",
-            value: formatCurrency(Math.max(0, totalInvested), "BRL"),
-            color: "text-primary",
-            sub: null,
-          },
-          {
-            label: "Saldo",
-            value: formatCurrency(balance, "BRL"),
-            color: balance >= 0 ? "text-accent" : "text-danger",
-            sub: null,
-          },
-          {
-            label: "Taxa de Poupança",
-            value: `${savingsRate.toFixed(1)}%`,
-            color: "text-primary",
-            sub: "(income − saídas) / income",
-          },
-        ].map(({ label, value, color, sub }) => (
-          <div key={label} className="bg-surface border border-border rounded-xl p-4 space-y-1">
-            <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
-            <p className={`text-xl font-bold font-mono ${color}`}>{loading ? "—" : value}</p>
-            {sub && <p className="text-[10px] text-muted">{sub}</p>}
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-surface border border-border rounded-xl p-4 space-y-2 animate-pulse">
+              <div className="h-2.5 bg-surface-3 rounded w-2/3" />
+              <div className="h-6 bg-surface-3 rounded w-3/4" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {kpis.map(({ label, value, color, accent }) => (
+            <div key={label} className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 space-y-1`}>
+              <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
+              <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <span className="text-sm text-muted animate-pulse">Carregando dados...</span>
+        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 items-start animate-pulse">
+          <div className="space-y-5">
+            <div className="bg-surface border border-border rounded-xl p-5 h-80" />
+            <div className="bg-surface border border-border rounded-xl p-5 h-64" />
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-surface border border-border rounded-xl h-14" />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 items-start">
@@ -431,7 +441,7 @@ export default function SummaryPage() {
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-[10px] uppercase tracking-wider text-muted">Total</span>
                       <span className="text-base font-bold font-mono text-danger mt-0.5">
-                        {formatCurrency(totalOutcome, "BRL")}
+                        {formatCurrency(totalOutcome, displayCurrency)}
                       </span>
                     </div>
                   </div>
@@ -446,7 +456,7 @@ export default function SummaryPage() {
                         />
                         <span className="text-xs text-muted truncate">{g.familyName}</span>
                         <span className="text-xs font-mono text-text-primary ml-auto">
-                          {formatCurrency(g.outcome, "BRL")}
+                          {formatCurrency(g.outcome, displayCurrency)}
                         </span>
                       </div>
                     ))}
@@ -533,7 +543,7 @@ export default function SummaryPage() {
                     )}
 
                     <span className="text-sm font-mono font-semibold" style={{ color: familyColor }}>
-                      -{formatCurrency(group.outcome, "BRL")}
+                      -{formatCurrency(group.outcome, displayCurrency)}
                     </span>
                     <span className="text-muted text-xs ml-1">{isExpanded ? "▲" : "▼"}</span>
                   </button>
@@ -555,7 +565,7 @@ export default function SummaryPage() {
                                 {cat.name}
                               </span>
                               <span className="text-xs font-mono text-text-secondary">
-                                -{formatCurrency(cat.value, "BRL")}
+                                -{formatCurrency(cat.value, displayCurrency)}
                               </span>
                             </div>
 
@@ -565,7 +575,7 @@ export default function SummaryPage() {
                                 const paid = transactions.some((tx) => tx.tag_id === tag.id);
                                 const tagTotal = transactions
                                   .filter((tx) => tx.tag_id === tag.id)
-                                  .reduce((s, tx) => s + tx.value, 0);
+                                  .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
 
                                 return (
                                   <div
@@ -591,7 +601,7 @@ export default function SummaryPage() {
                                         paid ? "text-text-secondary" : "text-muted opacity-40"
                                       }`}
                                     >
-                                      {paid ? `-${formatCurrency(tagTotal, "BRL")}` : "—"}
+                                      {paid ? `-${formatCurrency(tagTotal, displayCurrency)}` : "—"}
                                     </span>
                                   </div>
                                 );
@@ -613,7 +623,7 @@ export default function SummaryPage() {
                         >
                           <span className="text-sm text-muted">{item.name}</span>
                           <span className="text-sm font-mono text-text-primary">
-                            -{formatCurrency(item.value, "BRL")}
+                            -{formatCurrency(item.value, displayCurrency)}
                           </span>
                         </div>
                       ))}
@@ -629,7 +639,7 @@ export default function SummaryPage() {
                 <div className="flex items-center gap-3 px-4 py-3 bg-surface-2 border-b border-border">
                   <span className="text-sm font-semibold flex-1 text-accent">Entradas</span>
                   <span className="text-sm font-mono font-semibold text-accent">
-                    +{formatCurrency(totalIncome, "BRL")}
+                    +{formatCurrency(totalIncome, displayCurrency)}
                   </span>
                 </div>
                 <div className="divide-y divide-border">
@@ -637,7 +647,7 @@ export default function SummaryPage() {
                     <div key={name} className="flex items-center justify-between px-4 py-1.5">
                       <span className="text-sm text-muted">{name}</span>
                       <span className="text-sm font-mono text-accent">
-                        +{formatCurrency(value, "BRL")}
+                        +{formatCurrency(value, displayCurrency)}
                       </span>
                     </div>
                   ))}
@@ -649,61 +659,6 @@ export default function SummaryPage() {
       )}
 
       {/* ── Transaction list ──────────────────────────────────────────────── */}
-      {!loading && transactions.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <button
-            onClick={() => setShowTxList((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-surface-2 hover:bg-surface-3 transition-colors text-left"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-text-primary">Transações do mês</span>
-              <span className="text-xs text-muted">({transactions.length})</span>
-            </div>
-            <span className="text-muted text-xs">{showTxList ? "▲" : "▼"}</span>
-          </button>
-
-          {showTxList && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Data</th>
-                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Família</th>
-                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Categoria</th>
-                    <th className="text-left px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Tag</th>
-                    <th className="text-right px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {[...transactions]
-                    .sort((a, b) => b.date_transaction.localeCompare(a.date_transaction))
-                    .map((tx) => {
-                      const { tag, cat, familyId } = resolveFamily(tx);
-                      const family = families.find((f) => f.id === familyId);
-                      const isIncome = tag?.type === "income";
-                      return (
-                        <tr key={tx.id} className="hover:bg-surface-2 transition-colors">
-                          <td className="px-4 py-2 text-xs font-mono text-muted whitespace-nowrap">
-                            {formatDate(tx.date_transaction)}
-                          </td>
-                          <td className="px-4 py-2 text-sm text-text-secondary">{family?.name ?? "—"}</td>
-                          <td className="px-4 py-2 text-sm text-text-secondary">{cat?.name ?? "—"}</td>
-                          <td className="px-4 py-2 text-sm text-muted">
-                            {tag?.name ?? "—"}
-                            {tx.symbol && <span className="ml-1 text-xs font-mono text-primary">{tx.symbol}</span>}
-                          </td>
-                          <td className={`px-4 py-2 text-sm font-mono text-right ${isIncome ? "text-accent" : "text-text-primary"}`}>
-                            {isIncome ? "+" : "-"}{formatCurrency(tx.value, tx.currency)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
