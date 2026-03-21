@@ -22,6 +22,12 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href="/demo"
+              className="text-sm text-muted hover:text-text-primary transition-colors px-3 py-1.5"
+            >
+              Demo
+            </Link>
+            <Link
               href="/login"
               className="text-sm text-muted hover:text-text-primary transition-colors px-3 py-1.5"
             >
@@ -81,12 +87,123 @@ export default function LandingPage() {
             >
               Começar grátis →
             </Link>
-            <a
-              href="#como-funciona"
-              className="text-sm text-muted hover:text-text-primary transition-colors px-4 py-3"
+            <Link
+              href="/demo"
+              className="flex items-center gap-2 text-sm text-muted hover:text-text-primary border border-border hover:border-border/80 bg-surface hover:bg-surface-2 px-6 py-3 rounded-xl transition-all duration-200"
             >
-              Ver como funciona ↓
-            </a>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Ver demo ao vivo
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── App preview ──────────────────────────────────── */}
+      <section className="py-6 px-6">
+        <div className="max-w-5xl mx-auto">
+          {/* Mock app UI */}
+          <div className="rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/40">
+            {/* Fake browser chrome */}
+            <div className="bg-surface-2 border-b border-border px-4 py-2.5 flex items-center gap-2">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-danger/60" />
+                <div className="w-3 h-3 rounded-full bg-primary/40" />
+                <div className="w-3 h-3 rounded-full bg-accent/40" />
+              </div>
+              <div className="flex-1 bg-surface rounded-md h-5 mx-4 flex items-center px-3">
+                <span className="text-[10px] text-muted font-mono">app.lootcontrol.com/summary</span>
+              </div>
+            </div>
+            {/* Fake dashboard */}
+            <div className="bg-background flex" style={{ height: 320 }}>
+              {/* Sidebar */}
+              <div className="w-44 border-r border-border bg-surface flex-col hidden md:flex" style={{ background: "linear-gradient(180deg, #0E1218 0%, #0A0F16 100%)" }}>
+                <div className="border-b border-border px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-primary/20" />
+                    <span className="text-xs font-semibold text-text-primary">Loot Control</span>
+                  </div>
+                </div>
+                <div className="px-2 py-2 space-y-0.5 flex-1">
+                  {["Gastos", "Investimentos", "Transações", "Tags"].map((item, i) => (
+                    <div key={item} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${i === 0 ? "bg-primary/10" : ""}`}>
+                      <div className={`w-3 h-3 rounded-sm ${i === 0 ? "bg-primary/60" : "bg-surface-3"}`} />
+                      <span className={`text-[11px] font-medium ${i === 0 ? "text-primary" : "text-muted"}`}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Main content */}
+              <div className="flex-1 p-4 overflow-hidden">
+                {/* KPIs */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {[
+                    { label: "Entradas", value: "+R$8.500", color: "text-accent" },
+                    { label: "Saídas", value: "-R$4.230", color: "text-danger" },
+                    { label: "Saldo", value: "+R$4.270", color: "text-primary" },
+                    { label: "Poupança", value: "50,2%", color: "text-accent" },
+                  ].map((k) => (
+                    <div key={k.label} className="bg-surface border border-border rounded-lg p-2">
+                      <p className="text-[8px] text-muted uppercase tracking-wide">{k.label}</p>
+                      <p className={`text-xs font-bold font-mono mt-0.5 ${k.color}`}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Two columns */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Spending bars */}
+                  <div className="bg-surface border border-border rounded-lg p-3">
+                    <p className="text-[9px] text-muted uppercase tracking-wide mb-2">Gastos por família</p>
+                    <div className="space-y-1.5">
+                      {[
+                        { name: "Moradia", pct: 65, color: "#2563eb" },
+                        { name: "Alimentação", pct: 28, color: "#22c55e" },
+                        { name: "Saúde", pct: 4, color: "#f59e0b" },
+                        { name: "Lazer", pct: 3, color: "#8b5cf6" },
+                      ].map((f) => (
+                        <div key={f.name}>
+                          <div className="flex justify-between mb-0.5">
+                            <span className="text-[8px] text-muted">{f.name}</span>
+                            <span className="text-[8px] text-muted">{f.pct}%</span>
+                          </div>
+                          <div className="h-1 bg-surface-3 rounded-full">
+                            <div className="h-full rounded-full" style={{ width: `${f.pct}%`, background: f.color }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Transactions */}
+                  <div className="bg-surface border border-border rounded-lg p-3">
+                    <p className="text-[9px] text-muted uppercase tracking-wide mb-2">Últimas transações</p>
+                    <div className="space-y-1.5">
+                      {[
+                        { name: "Salário CLT", value: "+R$8.500", income: true },
+                        { name: "Aluguel", value: "-R$2.500", income: false },
+                        { name: "Mercado", value: "-R$380", income: false },
+                        { name: "Netflix", value: "-R$39,90", income: false },
+                      ].map((t) => (
+                        <div key={t.name} className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${t.income ? "bg-accent" : "bg-danger"}`} />
+                            <span className="text-[9px] text-text-secondary">{t.name}</span>
+                          </div>
+                          <span className={`text-[9px] font-mono font-semibold ${t.income ? "text-accent" : "text-text-primary"}`}>{t.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-4">
+            <Link href="/demo" className="text-xs text-primary hover:text-primary-hover transition-colors">
+              Explorar demo interativa →
+            </Link>
           </div>
         </div>
       </section>

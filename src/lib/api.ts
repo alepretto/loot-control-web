@@ -118,6 +118,8 @@ export const usersApi = {
   create: (data: { email: string; username: string; first_name: string; last_name: string }) =>
     request<User>("/users/", { method: "POST", body: JSON.stringify(data) }),
   me: () => request<User>("/users/me"),
+  update: (data: Partial<{ first_name: string; last_name: string; username: string }>) =>
+    request<User>("/users/me", { method: "PATCH", body: JSON.stringify(data) }),
 };
 
 // ─── Tag Families ─────────────────────────────────────────────────────────────

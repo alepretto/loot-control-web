@@ -27,6 +27,7 @@ import {
   CdiRateItem,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useSettings } from "@/contexts/SettingsContext";
 
 ChartJS.register(
   LineElement,
@@ -609,6 +610,7 @@ function isClosedRow(row: SymbolRow, isFixedIncome: boolean): boolean {
 // ─── Fixed income table with drill-down ───────────────────────────────────────
 
 function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
+  const { fmtDisplay } = useSettings();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showClosed, setShowClosed] = useState(false);
 
@@ -654,10 +656,10 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
                   </div>
                 </td>
                 <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                  {formatCurrency(row.aporteBrl, "BRL")}
+                  {fmtDisplay(row.aporteBrl, "BRL")}
                 </td>
                 <td className="px-3 py-2.5 text-sm font-mono text-right font-semibold text-text-primary">
-                  {formatCurrency(row.carteiraBrl, "BRL")}
+                  {fmtDisplay(row.carteiraBrl, "BRL")}
                 </td>
                 <td className="px-3 py-2.5 text-right">
                   <RetornoBadge pct={retPct} />
@@ -670,6 +672,7 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
                     <p className="text-[10px] uppercase tracking-wider text-muted mb-2">
                       Detalhes por aporte
                     </p>
+                    <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr>
@@ -701,10 +704,10 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
                               {d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}
                             </td>
                             <td className="py-1.5 text-xs font-mono text-right text-text-primary">
-                              {formatCurrency(d.principalBrl, "BRL")}
+                              {fmtDisplay(d.principalBrl, "BRL")}
                             </td>
                             <td className="py-1.5 text-xs font-mono text-right text-accent">
-                              {formatCurrency(d.currentBrl, "BRL")}
+                              {fmtDisplay(d.currentBrl, "BRL")}
                             </td>
                             <td className="py-1.5 text-xs font-mono text-right text-accent">
                               +
@@ -720,6 +723,7 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -743,11 +747,11 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
               return (
                 <tr key={row.symbol} className="border-b border-border/50 opacity-50">
                   <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
-                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(row.aporteBrl, "BRL")}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
                   <td className="px-3 py-2 text-sm font-mono text-right text-muted">—</td>
                   <td className="px-3 py-2 text-sm font-mono text-right">
                     <span className={resultado >= 0 ? "text-accent" : "text-danger"}>
-                      {resultado >= 0 ? "+" : ""}{formatCurrency(resultado, "BRL")}
+                      {resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}
                     </span>
                   </td>
                 </tr>
@@ -781,6 +785,7 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
 // ─── Market asset table (crypto / stocks) ─────────────────────────────────────
 
 function MarketTable({ group }: { group: TagGroup }) {
+  const { fmtDisplay } = useSettings();
   const [showClosed, setShowClosed] = useState(false);
 
   const openRows = group.rows.filter((r) => r.qty > 0);
@@ -831,7 +836,7 @@ function MarketTable({ group }: { group: TagGroup }) {
                 {row.currentPrice !== null
                   ? row.priceCurrency === "USD"
                     ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : formatCurrency(row.currentPrice, "BRL")
+                    : fmtDisplay(row.currentPrice, "BRL")
                   : "—"}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
@@ -840,10 +845,10 @@ function MarketTable({ group }: { group: TagGroup }) {
                   : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                {formatCurrency(row.aporteBrl, "BRL")}
+                {fmtDisplay(row.aporteBrl, "BRL")}
               </td>
               <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                {row.carteiraBrl > 0 ? formatCurrency(row.carteiraBrl, "BRL") : "—"}
+                {row.carteiraBrl > 0 ? fmtDisplay(row.carteiraBrl, "BRL") : "—"}
               </td>
               <td className="px-3 py-2.5 text-right">
                 {row.carteiraBrl > 0 ? <RetornoBadge pct={retPct} /> : <span className="text-xs text-muted">—</span>}
@@ -878,11 +883,11 @@ function MarketTable({ group }: { group: TagGroup }) {
                 {allClosed.map((c, i) => (
                   <tr key={i} className="border-b border-border/50 opacity-60">
                     <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{c.symbol}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(c.buysTotal, "BRL")}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{formatCurrency(c.sellsTotal, "BRL")}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.buysTotal, "BRL")}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</td>
                     <td className="px-3 py-2 text-sm font-mono text-right">
                       <span className={c.result >= 0 ? "text-accent" : "text-danger"}>
-                        {c.result >= 0 ? "+" : ""}{formatCurrency(c.result, "BRL")}
+                        {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -898,10 +903,10 @@ function MarketTable({ group }: { group: TagGroup }) {
         <tr className="border-t border-border bg-surface-2">
           <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
           <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(openRows.reduce((s, r) => s + r.aporteBrl, 0), "BRL")}
+            {fmtDisplay(openRows.reduce((s, r) => s + r.aporteBrl, 0), "BRL")}
           </td>
           <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(openRows.reduce((s, r) => s + r.carteiraBrl, 0), "BRL")}
+            {fmtDisplay(openRows.reduce((s, r) => s + r.carteiraBrl, 0), "BRL")}
           </td>
           <td colSpan={2} />
         </tr>
@@ -913,6 +918,7 @@ function MarketTable({ group }: { group: TagGroup }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InvestmentsPage() {
+  const { fmtDisplay, displayCurrency } = useSettings();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1044,7 +1050,7 @@ export default function InvestmentsPage() {
         intersect: false,
         callbacks: {
           label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
-            ` ${ctx.dataset.label ?? ""}: ${formatCurrency(ctx.parsed.y ?? 0, "BRL")}`,
+            ` ${ctx.dataset.label ?? ""}: ${fmtDisplay(ctx.parsed.y ?? 0, "BRL")}`,
         },
       },
     },
@@ -1084,7 +1090,7 @@ export default function InvestmentsPage() {
         ...TOOLTIP_STYLE,
         callbacks: {
           label: (ctx: { label: string; parsed: number }) =>
-            ` ${ctx.label}: ${formatCurrency(ctx.parsed, "BRL")}`,
+            ` ${ctx.label}: ${fmtDisplay(ctx.parsed, "BRL")}`,
         },
       },
     },
@@ -1119,7 +1125,7 @@ export default function InvestmentsPage() {
         ...TOOLTIP_STYLE,
         callbacks: {
           label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
-            ` ${ctx.dataset.label ?? ""}: ${formatCurrency(ctx.parsed.y ?? 0, "BRL")}`,
+            ` ${ctx.dataset.label ?? ""}: ${fmtDisplay(ctx.parsed.y ?? 0, "BRL")}`,
         },
       },
     },
@@ -1138,50 +1144,50 @@ export default function InvestmentsPage() {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center h-64 text-muted text-sm animate-pulse">
-        Carregando dados...
+      <div className="px-4 md:px-6 py-5 space-y-6 animate-pulse">
+        <div className="space-y-1">
+          <div className="h-5 bg-surface-3 rounded w-40" />
+          <div className="h-3 bg-surface-3 rounded w-28" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-surface border border-border rounded-xl p-4 space-y-2">
+              <div className="h-2.5 bg-surface-3 rounded w-2/3" />
+              <div className="h-6 bg-surface-3 rounded w-3/4" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-surface border border-border rounded-xl p-5 h-80" />
       </div>
     );
 
+  const currencyLabel = displayCurrency === "BRL" ? "R$" : displayCurrency;
+  const kpis = [
+    { label: "Dólar (BRL)",      value: latestUsd ? fmtDisplay(latestUsd, "BRL") : "—",                              color: "text-text-primary", accent: "border-border",        badge: null },
+    { label: "Saldo Total",      value: fmtDisplay(saldoTotal, "BRL"),                                                color: saldoTotal >= totalAporte ? "text-accent" : "text-danger", accent: saldoTotal >= totalAporte ? "border-accent/40" : "border-danger/40", badge: <RetornoBadge pct={retornoPct} /> },
+    { label: "Valor Investido",  value: fmtDisplay(totalAporte, "BRL"),                                               color: "text-text-primary", accent: "border-primary/40",    badge: null },
+    { label: `Retorno (${currencyLabel})`, value: `${retornoTotal >= 0 ? "+" : ""}${fmtDisplay(retornoTotal, "BRL")}`, color: retornoTotal >= 0 ? "text-accent" : "text-danger", accent: retornoTotal >= 0 ? "border-accent/40" : "border-danger/40", badge: null },
+  ];
+
   return (
-    <div className="px-6 py-5 space-y-6">
-      <h1 className="text-lg font-semibold text-text-primary">Investimentos</h1>
+    <div className="px-4 md:px-6 py-5 space-y-6">
+      <div>
+        <h1 className="text-lg font-semibold text-text-primary">Investimentos</h1>
+        {saldoTotal > 0 && (
+          <p className="text-xs text-muted mt-0.5">
+            Carteira atual: <span className={`font-mono font-semibold ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>{fmtDisplay(saldoTotal, "BRL")}</span>
+          </p>
+        )}
+      </div>
 
       {/* ── KPIs ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          {
-            label: "Dólar (BRL)",
-            value: latestUsd ? formatCurrency(latestUsd, "BRL") : "—",
-            color: "text-text-primary",
-            badge: null,
-          },
-          {
-            label: "Saldo Total",
-            value: formatCurrency(saldoTotal, "BRL"),
-            color: saldoTotal >= totalAporte ? "text-accent" : "text-danger",
-            badge: <RetornoBadge pct={retornoPct} />,
-          },
-          {
-            label: "Valor Investido",
-            value: formatCurrency(totalAporte, "BRL"),
-            color: "text-text-primary",
-            badge: null,
-          },
-          {
-            label: "Retorno (R$)",
-            value: `${retornoTotal >= 0 ? "+" : ""}${formatCurrency(retornoTotal, "BRL")}`,
-            color: retornoTotal >= 0 ? "text-accent" : "text-danger",
-            badge: null,
-          },
-        ].map(({ label, value, color, badge }) => (
+        {kpis.map(({ label, value, color, accent, badge }) => (
           <div
             key={label}
-            className="bg-surface border border-border rounded-xl p-4 space-y-1"
+            className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 space-y-1`}
           >
-            <p className="text-xs uppercase tracking-wider text-muted">
-              {label}
-            </p>
+            <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
             <div className="flex items-center gap-2 flex-wrap">
               <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
               {badge}
@@ -1282,7 +1288,7 @@ export default function InvestmentsPage() {
                         Total
                       </span>
                       <span className="text-sm font-bold font-mono text-text-primary mt-0.5">
-                        {formatCurrency(saldoTotal, "BRL")}
+                        {fmtDisplay(saldoTotal, "BRL")}
                       </span>
                     </div>
                   </div>
@@ -1356,7 +1362,7 @@ export default function InvestmentsPage() {
                       className={`text-xs font-mono font-semibold ${group.retornoBrl >= 0 ? "text-accent" : "text-danger"}`}
                     >
                       {group.retornoBrl >= 0 ? "+" : ""}
-                      {formatCurrency(group.retornoBrl, "BRL")}
+                      {fmtDisplay(group.retornoBrl, "BRL")}
                     </span>
                     <RetornoBadge pct={group.retornoPct} />
                   </div>
