@@ -27,5 +27,32 @@ export default withPWA({
   register: true,
   workboxOptions: {
     skipWaiting: true,
+    // Cacheia apenas assets estáticos do Next.js — nunca dados de API
+    runtimeCaching: [
+      {
+        urlPattern: /\/_next\/static\/.+/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "next-static-assets",
+          expiration: { maxEntries: 128, maxAgeSeconds: 7 * 24 * 60 * 60 },
+        },
+      },
+      {
+        urlPattern: /\/_next\/image\?.+/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "next-images",
+          expiration: { maxEntries: 64, maxAgeSeconds: 7 * 24 * 60 * 60 },
+        },
+      },
+      {
+        urlPattern: /\.(?:png|jpg|jpeg|svg|ico|webp)$/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "static-images",
+          expiration: { maxEntries: 32, maxAgeSeconds: 30 * 24 * 60 * 60 },
+        },
+      },
+    ],
   },
 })(nextConfig);
