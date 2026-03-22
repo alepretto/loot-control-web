@@ -107,7 +107,7 @@ export function AddTransactionModal({ families, categories, tags, open, onClose,
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -115,7 +115,7 @@ export function AddTransactionModal({ families, categories, tags, open, onClose,
 
       {/* Bottom sheet */}
       <div
-        className={`fixed bottom-0 inset-x-0 z-50 transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 inset-x-0 z-[60] transition-transform duration-300 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}

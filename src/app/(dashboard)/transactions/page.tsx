@@ -90,9 +90,9 @@ function FilterSheet({ open, onClose, filters, families, filteredCategories, fil
 
   return (
     <>
-      <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      <div className={`fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         onClick={onClose} />
-      <div className={`fixed bottom-0 inset-x-0 z-50 transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
+      <div className={`fixed bottom-0 inset-x-0 z-[60] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         <div className="bg-surface-2 rounded-t-2xl border-t border-border">
           <div className="flex justify-center pt-3 pb-1">
