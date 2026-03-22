@@ -82,12 +82,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const supabase = createClient();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sidebar-collapsed") === "true";
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("sidebar-collapsed") === "true") {
+      setCollapsed(true);
     }
-    return false;
-  });
+  }, []);
 
   useEffect(() => {
     usersApi.me().then((user) => {
@@ -288,7 +289,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         <div className="flex">
-          {navItems.map((item) => {
+          {navItems.filter(item => item.href !== "/chat").map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link

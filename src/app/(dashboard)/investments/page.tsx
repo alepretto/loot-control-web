@@ -617,168 +617,185 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
   const openRows = rows.filter((r) => !isClosedRow(r, true));
   const closedRows = rows.filter((r) => isClosedRow(r, true));
 
+  const totalAporte = openRows.reduce((s, r) => s + r.aporteBrl, 0);
+  const totalCarteira = openRows.reduce((s, r) => s + r.carteiraBrl, 0);
+
   return (
-    <table className="w-full">
-      <thead>
-        <tr className="border-b border-border">
-          {["Ativo", "Aporte", "Atual", "Retorno"].map((h, i) => (
-            <th
-              key={h}
-              className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}
-            >
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
+    <div>
+      {/* ── Mobile: card list ────────────────────────────────────────── */}
+      <div className="md:hidden divide-y divide-border">
         {openRows.map((row) => {
-          const rend = row.carteiraBrl - row.aporteBrl;
-          const retPct = row.aporteBrl > 0 ? (rend / row.aporteBrl) * 100 : 0;
+          const retPct = row.aporteBrl > 0 ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100 : 0;
           const isOpen = expanded === row.symbol;
           return (
-            <React.Fragment key={row.symbol}>
-              <tr
-                className="border-b border-border hover:bg-surface-2 transition-colors cursor-pointer"
+            <div key={row.symbol}>
+              <button
+                className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-surface-2 transition-colors"
                 onClick={() => setExpanded(isOpen ? null : row.symbol)}
               >
-                <td className="px-3 py-2.5">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono font-semibold text-primary">
-                      {row.symbol}
-                    </span>
+                    <span className="text-sm font-mono font-semibold text-primary">{row.symbol}</span>
                     {row.details.length > 0 && (
-                      <span className="text-[10px] text-muted">
-                        {isOpen ? "▲" : "▼"} {row.details.length} aporte
-                        {row.details.length > 1 ? "s" : ""}
-                      </span>
+                      <span className="text-[10px] text-muted">{isOpen ? "▲" : "▼"} {row.details.length} aporte{row.details.length > 1 ? "s" : ""}</span>
                     )}
                   </div>
-                </td>
-                <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                  {fmtDisplay(row.aporteBrl, "BRL")}
-                </td>
-                <td className="px-3 py-2.5 text-sm font-mono text-right font-semibold text-text-primary">
-                  {fmtDisplay(row.carteiraBrl, "BRL")}
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  <RetornoBadge pct={retPct} />
-                </td>
-              </tr>
-
-              {isOpen && row.details.length > 0 && (
-                <tr className="border-b border-border bg-surface-2/50">
-                  <td colSpan={4} className="px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted mb-2">
-                      Detalhes por aporte
-                    </p>
-                    <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr>
-                          {[
-                            "Data",
-                            "Índice",
-                            "Principal",
-                            "Atual",
-                            "Ganho",
-                            "Retorno",
-                          ].map((h, i) => (
-                            <th
-                              key={h}
-                              className={`text-[11px] uppercase tracking-wider text-muted font-medium pb-1 ${i === 0 ? "text-left" : "text-right"}`}
-                            >
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/50">
-                        {row.details.map((d) => (
-                          <tr key={d.tx.id}>
-                            <td className="py-1.5 text-xs font-mono text-muted">
-                              {formatDate(d.tx.date_transaction)}
-                            </td>
-                            <td className="py-1.5 text-xs text-right text-text-secondary">
-                              {d.tx.index ?? "—"}
-                              {d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}
-                            </td>
-                            <td className="py-1.5 text-xs font-mono text-right text-text-primary">
-                              {fmtDisplay(d.principalBrl, "BRL")}
-                            </td>
-                            <td className="py-1.5 text-xs font-mono text-right text-accent">
-                              {fmtDisplay(d.currentBrl, "BRL")}
-                            </td>
-                            <td className="py-1.5 text-xs font-mono text-right text-accent">
-                              +
-                              {formatCurrency(
-                                d.currentBrl - d.principalBrl,
-                                "BRL",
-                              )}
-                            </td>
-                            <td className="py-1.5 text-right">
-                              <RetornoBadge pct={d.returnPct} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex gap-4 mt-1">
+                    <div>
+                      <span className="text-[9px] text-muted uppercase tracking-wide">Aporte</span>
+                      <p className="text-xs font-mono text-text-secondary">{fmtDisplay(row.aporteBrl, "BRL")}</p>
                     </div>
-                  </td>
-                </tr>
+                    <div>
+                      <span className="text-[9px] text-muted uppercase tracking-wide">Atual</span>
+                      <p className="text-xs font-mono font-semibold text-text-primary">{fmtDisplay(row.carteiraBrl, "BRL")}</p>
+                    </div>
+                  </div>
+                </div>
+                <RetornoBadge pct={retPct} />
+              </button>
+              {isOpen && row.details.length > 0 && (
+                <div className="bg-surface-2/50 px-4 py-3 border-t border-border/50">
+                  <p className="text-[10px] uppercase tracking-wider text-muted mb-2">Aportes</p>
+                  <div className="space-y-2">
+                    {row.details.map((d) => (
+                      <div key={d.tx.id} className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-mono text-muted">{formatDate(d.tx.date_transaction)}</p>
+                          <p className="text-[10px] text-muted">{d.tx.index ?? "—"}{d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-mono text-accent">{fmtDisplay(d.currentBrl, "BRL")}</p>
+                          <RetornoBadge pct={d.returnPct} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </React.Fragment>
+            </div>
           );
         })}
-      </tbody>
-      <tfoot>
         {closedRows.length > 0 && (
-          <>
-            <tr
-              className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
-              onClick={() => setShowClosed((v) => !v)}
-            >
-              <td colSpan={4} className="px-3 py-2 text-xs text-muted">
-                {showClosed ? "▼" : "▶"} {closedRows.length} encerrada{closedRows.length > 1 ? "s" : ""}
-              </td>
+          <button className="w-full px-4 py-2.5 text-left text-xs text-muted hover:bg-surface-2 transition-colors"
+            onClick={() => setShowClosed(v => !v)}>
+            {showClosed ? "▼" : "▶"} {closedRows.length} encerrada{closedRows.length > 1 ? "s" : ""}
+          </button>
+        )}
+        {showClosed && closedRows.map((row) => {
+          const resultado = row.carteiraBrl - row.aporteBrl;
+          return (
+            <div key={row.symbol} className="px-4 py-3 opacity-50 flex items-center justify-between">
+              <span className="text-sm font-mono font-semibold text-muted">{row.symbol}</span>
+              <span className={`text-sm font-mono ${resultado >= 0 ? "text-accent" : "text-danger"}`}>
+                {resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}
+              </span>
+            </div>
+          );
+        })}
+        <div className="px-4 py-3 bg-surface-2 flex items-center justify-between border-t border-border">
+          <span className="text-xs font-semibold text-muted uppercase">Total</span>
+          <div className="text-right">
+            <p className="text-xs font-mono text-text-secondary">{fmtDisplay(totalAporte, "BRL")} aportado</p>
+            <p className="text-sm font-mono font-semibold text-text-primary">{fmtDisplay(totalCarteira, "BRL")}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop: table ────────────────────────────────────────────── */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              {["Ativo", "Aporte", "Atual", "Retorno"].map((h, i) => (
+                <th key={h} className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
+              ))}
             </tr>
-            {showClosed && closedRows.map((row) => {
-              const resultado = row.carteiraBrl - row.aporteBrl;
+          </thead>
+          <tbody>
+            {openRows.map((row) => {
+              const rend = row.carteiraBrl - row.aporteBrl;
+              const retPct = row.aporteBrl > 0 ? (rend / row.aporteBrl) * 100 : 0;
+              const isOpen = expanded === row.symbol;
               return (
-                <tr key={row.symbol} className="border-b border-border/50 opacity-50">
-                  <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
-                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
-                  <td className="px-3 py-2 text-sm font-mono text-right text-muted">—</td>
-                  <td className="px-3 py-2 text-sm font-mono text-right">
-                    <span className={resultado >= 0 ? "text-accent" : "text-danger"}>
-                      {resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}
-                    </span>
-                  </td>
-                </tr>
+                <React.Fragment key={row.symbol}>
+                  <tr className="border-b border-border hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => setExpanded(isOpen ? null : row.symbol)}>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-semibold text-primary">{row.symbol}</span>
+                        {row.details.length > 0 && (
+                          <span className="text-[10px] text-muted">{isOpen ? "▲" : "▼"} {row.details.length} aporte{row.details.length > 1 ? "s" : ""}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                    <td className="px-3 py-2.5 text-sm font-mono text-right font-semibold text-text-primary">{fmtDisplay(row.carteiraBrl, "BRL")}</td>
+                    <td className="px-3 py-2.5 text-right"><RetornoBadge pct={retPct} /></td>
+                  </tr>
+                  {isOpen && row.details.length > 0 && (
+                    <tr className="border-b border-border bg-surface-2/50">
+                      <td colSpan={4} className="px-4 py-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted mb-2">Detalhes por aporte</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr>
+                                {["Data","Índice","Principal","Atual","Ganho","Retorno"].map((h, i) => (
+                                  <th key={h} className={`text-[11px] uppercase tracking-wider text-muted font-medium pb-1 ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {row.details.map((d) => (
+                                <tr key={d.tx.id}>
+                                  <td className="py-1.5 text-xs font-mono text-muted">{formatDate(d.tx.date_transaction)}</td>
+                                  <td className="py-1.5 text-xs text-right text-text-secondary">{d.tx.index ?? "—"}{d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}</td>
+                                  <td className="py-1.5 text-xs font-mono text-right text-text-primary">{fmtDisplay(d.principalBrl, "BRL")}</td>
+                                  <td className="py-1.5 text-xs font-mono text-right text-accent">{fmtDisplay(d.currentBrl, "BRL")}</td>
+                                  <td className="py-1.5 text-xs font-mono text-right text-accent">+{formatCurrency(d.currentBrl - d.principalBrl, "BRL")}</td>
+                                  <td className="py-1.5 text-right"><RetornoBadge pct={d.returnPct} /></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
-          </>
-        )}
-        <tr className="border-t border-border bg-surface-2">
-          <td className="px-3 py-2 text-xs font-semibold text-muted uppercase">
-            Total
-          </td>
-          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(
-              openRows.reduce((s, r) => s + r.aporteBrl, 0),
-              "BRL",
+          </tbody>
+          <tfoot>
+            {closedRows.length > 0 && (
+              <>
+                <tr className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors" onClick={() => setShowClosed((v) => !v)}>
+                  <td colSpan={4} className="px-3 py-2 text-xs text-muted">
+                    {showClosed ? "▼" : "▶"} {closedRows.length} encerrada{closedRows.length > 1 ? "s" : ""}
+                  </td>
+                </tr>
+                {showClosed && closedRows.map((row) => {
+                  const resultado = row.carteiraBrl - row.aporteBrl;
+                  return (
+                    <tr key={row.symbol} className="border-b border-border/50 opacity-50">
+                      <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
+                      <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                      <td className="px-3 py-2 text-sm font-mono text-right text-muted">—</td>
+                      <td className="px-3 py-2 text-sm font-mono text-right"><span className={resultado >= 0 ? "text-accent" : "text-danger"}>{resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}</span></td>
+                    </tr>
+                  );
+                })}
+              </>
             )}
-          </td>
-          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {formatCurrency(
-              openRows.reduce((s, r) => s + r.carteiraBrl, 0),
-              "BRL",
-            )}
-          </td>
-          <td />
-        </tr>
-      </tfoot>
-    </table>
+            <tr className="border-t border-border bg-surface-2">
+              <td className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
+              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">{formatCurrency(totalAporte, "BRL")}</td>
+              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">{formatCurrency(totalCarteira, "BRL")}</td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -789,129 +806,207 @@ function MarketTable({ group }: { group: TagGroup }) {
   const [showClosed, setShowClosed] = useState(false);
 
   const openRows = group.rows.filter((r) => r.qty > 0);
-  // Flatten all closed cycles from all rows, preserving symbol
   const allClosed = group.rows.flatMap((r) =>
     r.closedCycles.map((c) => ({ symbol: r.symbol, ...c })),
   );
   const usd = group.rows.some((r) => r.priceCurrency === "USD");
 
+  const totalAporte = openRows.reduce((s, r) => s + r.aporteBrl, 0);
+  const totalCarteira = openRows.reduce((s, r) => s + r.carteiraBrl, 0);
+
   return (
-    <table className="w-full">
-      <thead>
-        <tr className="border-b border-border">
-          {[
-            "Símbolo",
-            usd ? "Preço (USD)" : "Preço",
-            "Qtd",
-            "Aporte (R$)",
-            "Carteira (R$)",
-            "Retorno",
-            "Peso",
-          ].map((h, i) => (
-            <th
-              key={h}
-              className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}
-            >
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-border">
+    <div>
+      {/* ── Mobile: card list ─────────────────────────────────────── */}
+      <div className="md:hidden divide-y divide-border">
         {openRows.map((row) => {
-          const retPct =
-            row.aporteBrl > 0
-              ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100
-              : 0;
-          const peso =
-            group.totalCarteira > 0
-              ? (row.carteiraBrl / group.totalCarteira) * 100
-              : 0;
+          const retPct = row.aporteBrl > 0 ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100 : 0;
+          const peso = group.totalCarteira > 0 ? (row.carteiraBrl / group.totalCarteira) * 100 : 0;
+          const priceStr = row.currentPrice !== null
+            ? row.priceCurrency === "USD"
+              ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : fmtDisplay(row.currentPrice, "BRL")
+            : "—";
+          const qtyStr = row.qty % 1 === 0
+            ? row.qty.toLocaleString("pt-BR")
+            : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 });
           return (
-            <tr key={row.symbol} className="hover:bg-surface-2 transition-colors">
-              <td className="px-3 py-2.5 text-sm font-mono font-semibold text-primary">
-                {row.symbol}
-              </td>
-              <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                {row.currentPrice !== null
-                  ? row.priceCurrency === "USD"
-                    ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : fmtDisplay(row.currentPrice, "BRL")
-                  : "—"}
-              </td>
-              <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                {row.qty % 1 === 0
-                  ? row.qty.toLocaleString("pt-BR")
-                  : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })}
-              </td>
-              <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                {fmtDisplay(row.aporteBrl, "BRL")}
-              </td>
-              <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
-                {row.carteiraBrl > 0 ? fmtDisplay(row.carteiraBrl, "BRL") : "—"}
-              </td>
-              <td className="px-3 py-2.5 text-right">
+            <div key={row.symbol} className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-semibold text-primary text-sm">{row.symbol}</span>
                 {row.carteiraBrl > 0 ? <RetornoBadge pct={retPct} /> : <span className="text-xs text-muted">—</span>}
-              </td>
-              <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                {row.carteiraBrl > 0 ? `${Math.round(peso)}%` : "—"}
-              </td>
-            </tr>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
+                <div>
+                  <span className="text-[9px] text-muted uppercase tracking-wider">Aporte</span>
+                  <p className="text-xs font-mono text-text-secondary">{fmtDisplay(row.aporteBrl, "BRL")}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted uppercase tracking-wider">Carteira</span>
+                  <p className="text-xs font-mono font-semibold text-text-primary">{row.carteiraBrl > 0 ? fmtDisplay(row.carteiraBrl, "BRL") : "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted uppercase tracking-wider">{usd ? "Preço (USD)" : "Preço"}</span>
+                  <p className="text-xs font-mono text-muted">{priceStr}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted uppercase tracking-wider">Qtd · Peso</span>
+                  <p className="text-xs font-mono text-muted">{qtyStr}{row.carteiraBrl > 0 ? ` · ${Math.round(peso)}%` : ""}</p>
+                </div>
+              </div>
+            </div>
           );
         })}
-      </tbody>
-      <tfoot>
         {allClosed.length > 0 && (
           <>
-            <tr
-              className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
+            <button
               onClick={() => setShowClosed((v) => !v)}
+              className="w-full px-4 py-2.5 text-left text-xs text-muted hover:bg-surface-2 transition-colors"
             >
-              <td colSpan={7} className="px-3 py-2 text-xs text-muted">
-                {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
-              </td>
-            </tr>
-            {showClosed && (
-              <>
-                <tr className="bg-surface-2/50">
-                  {["Símbolo", "Compra", "Venda", "Resultado", "%", "", ""].map((h, i) => (
-                    <td key={i} className={`px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted ${i > 0 ? "text-right" : ""}`}>
-                      {h}
-                    </td>
-                  ))}
-                </tr>
-                {allClosed.map((c, i) => (
-                  <tr key={i} className="border-b border-border/50 opacity-60">
-                    <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{c.symbol}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.buysTotal, "BRL")}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-right">
-                      <span className={c.result >= 0 ? "text-accent" : "text-danger"}>
-                        {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <RetornoBadge pct={c.resultPct} />
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                ))}
-              </>
-            )}
+              {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
+            </button>
+            {showClosed && allClosed.map((c, i) => (
+              <div key={i} className="px-4 py-3 opacity-60">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-semibold text-muted text-sm">{c.symbol}</span>
+                  <RetornoBadge pct={c.resultPct} />
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
+                  <div>
+                    <span className="text-[9px] text-muted uppercase tracking-wider">Compra</span>
+                    <p className="text-xs font-mono text-muted">{fmtDisplay(c.buysTotal, "BRL")}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-muted uppercase tracking-wider">Venda</span>
+                    <p className="text-xs font-mono text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-muted uppercase tracking-wider">Resultado</span>
+                    <p className={`text-xs font-mono ${c.result >= 0 ? "text-accent" : "text-danger"}`}>
+                      {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </>
         )}
-        <tr className="border-t border-border bg-surface-2">
-          <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
-          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {fmtDisplay(openRows.reduce((s, r) => s + r.aporteBrl, 0), "BRL")}
-          </td>
-          <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-            {fmtDisplay(openRows.reduce((s, r) => s + r.carteiraBrl, 0), "BRL")}
-          </td>
-          <td colSpan={2} />
-        </tr>
-      </tfoot>
-    </table>
+        <div className="px-4 py-2.5 border-t border-border bg-surface-2 flex justify-between items-center">
+          <span className="text-xs font-semibold text-muted uppercase">Total</span>
+          <div className="flex gap-4 text-xs font-mono font-semibold text-text-primary">
+            <span>{fmtDisplay(totalAporte, "BRL")}</span>
+            <span>{fmtDisplay(totalCarteira, "BRL")}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop: full table ───────────────────────────────────── */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              {[
+                "Símbolo",
+                usd ? "Preço (USD)" : "Preço",
+                "Qtd",
+                "Aporte (R$)",
+                "Carteira (R$)",
+                "Retorno",
+                "Peso",
+              ].map((h, i) => (
+                <th
+                  key={h}
+                  className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {openRows.map((row) => {
+              const retPct = row.aporteBrl > 0 ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100 : 0;
+              const peso = group.totalCarteira > 0 ? (row.carteiraBrl / group.totalCarteira) * 100 : 0;
+              return (
+                <tr key={row.symbol} className="hover:bg-surface-2 transition-colors">
+                  <td className="px-3 py-2.5 text-sm font-mono font-semibold text-primary">{row.symbol}</td>
+                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
+                    {row.currentPrice !== null
+                      ? row.priceCurrency === "USD"
+                        ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : fmtDisplay(row.currentPrice, "BRL")
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
+                    {row.qty % 1 === 0
+                      ? row.qty.toLocaleString("pt-BR")
+                      : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                  <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
+                    {row.carteiraBrl > 0 ? fmtDisplay(row.carteiraBrl, "BRL") : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    {row.carteiraBrl > 0 ? <RetornoBadge pct={retPct} /> : <span className="text-xs text-muted">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
+                    {row.carteiraBrl > 0 ? `${Math.round(peso)}%` : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            {allClosed.length > 0 && (
+              <>
+                <tr
+                  className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
+                  onClick={() => setShowClosed((v) => !v)}
+                >
+                  <td colSpan={7} className="px-3 py-2 text-xs text-muted">
+                    {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
+                  </td>
+                </tr>
+                {showClosed && (
+                  <>
+                    <tr className="bg-surface-2/50">
+                      {["Símbolo", "Compra", "Venda", "Resultado", "%", "", ""].map((h, i) => (
+                        <td key={i} className={`px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted ${i > 0 ? "text-right" : ""}`}>
+                          {h}
+                        </td>
+                      ))}
+                    </tr>
+                    {allClosed.map((c, i) => (
+                      <tr key={i} className="border-b border-border/50 opacity-60">
+                        <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{c.symbol}</td>
+                        <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.buysTotal, "BRL")}</td>
+                        <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</td>
+                        <td className="px-3 py-2 text-sm font-mono text-right">
+                          <span className={c.result >= 0 ? "text-accent" : "text-danger"}>
+                            {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right"><RetornoBadge pct={c.resultPct} /></td>
+                        <td colSpan={2} />
+                      </tr>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+            <tr className="border-t border-border bg-surface-2">
+              <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
+              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
+                {fmtDisplay(totalAporte, "BRL")}
+              </td>
+              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
+                {fmtDisplay(totalCarteira, "BRL")}
+              </td>
+              <td colSpan={2} />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
   );
 }
 
