@@ -705,59 +705,71 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
-              {["Ativo", "Aporte", "Atual", "Retorno"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
+            <tr className="bg-surface-2/60 border-b border-border">
+              {["Ativo", "Aporte", "Atual", "Ganho", "Retorno"].map((h, i) => (
+                <th key={h} className={`px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted font-semibold ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {openRows.map((row) => {
-              const rend = row.carteiraBrl - row.aporteBrl;
-              const retPct = row.aporteBrl > 0 ? (rend / row.aporteBrl) * 100 : 0;
+              const ganho = row.carteiraBrl - row.aporteBrl;
+              const retPct = row.aporteBrl > 0 ? (ganho / row.aporteBrl) * 100 : 0;
               const isOpen = expanded === row.symbol;
+              const profitable = ganho >= 0;
               return (
                 <React.Fragment key={row.symbol}>
-                  <tr className="border-b border-border hover:bg-surface-2 transition-colors cursor-pointer" onClick={() => setExpanded(isOpen ? null : row.symbol)}>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono font-semibold text-primary">{row.symbol}</span>
+                  <tr
+                    className="border-b border-border hover:bg-surface-2 transition-colors cursor-pointer group"
+                    onClick={() => setExpanded(isOpen ? null : row.symbol)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-mono font-bold text-primary">{row.symbol}</span>
                         {row.details.length > 0 && (
-                          <span className="text-[10px] text-muted">{isOpen ? "▲" : "▼"} {row.details.length} aporte{row.details.length > 1 ? "s" : ""}</span>
+                          <span className="text-[10px] text-muted bg-surface-3 px-1.5 py-0.5 rounded">
+                            {isOpen ? "▲" : "▼"} {row.details.length}
+                          </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">{fmtDisplay(row.aporteBrl, "BRL")}</td>
-                    <td className="px-3 py-2.5 text-sm font-mono text-right font-semibold text-text-primary">{fmtDisplay(row.carteiraBrl, "BRL")}</td>
-                    <td className="px-3 py-2.5 text-right"><RetornoBadge pct={retPct} /></td>
+                    <td className="px-4 py-3 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-right font-semibold text-text-primary">{fmtDisplay(row.carteiraBrl, "BRL")}</td>
+                    <td className={`px-4 py-3 text-sm font-mono text-right font-medium ${profitable ? "text-accent" : "text-danger"}`}>
+                      {profitable ? "+" : ""}{fmtDisplay(ganho, "BRL")}
+                    </td>
+                    <td className="px-4 py-3 text-right"><RetornoBadge pct={retPct} /></td>
                   </tr>
                   {isOpen && row.details.length > 0 && (
-                    <tr className="border-b border-border bg-surface-2/50">
-                      <td colSpan={4} className="px-4 py-3">
-                        <p className="text-[10px] uppercase tracking-wider text-muted mb-2">Detalhes por aporte</p>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr>
-                                {["Data","Índice","Principal","Atual","Ganho","Retorno"].map((h, i) => (
-                                  <th key={h} className={`text-[11px] uppercase tracking-wider text-muted font-medium pb-1 ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/50">
-                              {row.details.map((d) => (
-                                <tr key={d.tx.id}>
-                                  <td className="py-1.5 text-xs font-mono text-muted">{formatDate(d.tx.date_transaction)}</td>
-                                  <td className="py-1.5 text-xs text-right text-text-secondary">{d.tx.index ?? "—"}{d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}</td>
-                                  <td className="py-1.5 text-xs font-mono text-right text-text-primary">{fmtDisplay(d.principalBrl, "BRL")}</td>
-                                  <td className="py-1.5 text-xs font-mono text-right text-accent">{fmtDisplay(d.currentBrl, "BRL")}</td>
-                                  <td className="py-1.5 text-xs font-mono text-right text-accent">+{formatCurrency(d.currentBrl - d.principalBrl, "BRL")}</td>
-                                  <td className="py-1.5 text-right"><RetornoBadge pct={d.returnPct} /></td>
-                                </tr>
+                    <tr className="border-b border-border">
+                      <td colSpan={5} className="px-4 py-4 bg-surface-2/40">
+                        <p className="text-[10px] uppercase tracking-wider text-muted mb-3">Detalhes por aporte</p>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border/50">
+                              {["Data", "Índice", "Principal", "Atual", "Ganho", "Retorno"].map((h, i) => (
+                                <th key={h} className={`pb-2 text-[10px] uppercase tracking-wider text-muted font-semibold ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
                               ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/30">
+                            {row.details.map((d) => {
+                              const g = d.currentBrl - d.principalBrl;
+                              return (
+                                <tr key={d.tx.id}>
+                                  <td className="py-2 text-xs font-mono text-muted">{d.tx.date_transaction.slice(0, 10).split("-").reverse().join("/")}</td>
+                                  <td className="py-2 text-xs text-right text-text-secondary">
+                                    <span className="bg-surface-3 px-1.5 py-0.5 rounded text-[10px]">{d.tx.index ?? "—"}{d.tx.index_rate ? ` ${d.tx.index_rate}%` : ""}</span>
+                                  </td>
+                                  <td className="py-2 text-xs font-mono text-right text-text-secondary">{fmtDisplay(d.principalBrl, "BRL")}</td>
+                                  <td className="py-2 text-xs font-mono text-right font-semibold text-text-primary">{fmtDisplay(d.currentBrl, "BRL")}</td>
+                                  <td className="py-2 text-xs font-mono text-right text-accent">+{fmtDisplay(g, "BRL")}</td>
+                                  <td className="py-2 text-right"><RetornoBadge pct={d.returnPct} /></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </td>
                     </tr>
                   )}
@@ -769,28 +781,34 @@ function FixedIncomeTable({ rows }: { rows: SymbolRow[] }) {
             {closedRows.length > 0 && (
               <>
                 <tr className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors" onClick={() => setShowClosed((v) => !v)}>
-                  <td colSpan={4} className="px-3 py-2 text-xs text-muted">
-                    {showClosed ? "▼" : "▶"} {closedRows.length} encerrada{closedRows.length > 1 ? "s" : ""}
+                  <td colSpan={5} className="px-4 py-2.5 text-xs text-muted">
+                    {showClosed ? "▼" : "▶"} {closedRows.length} posição{closedRows.length > 1 ? "s" : ""} encerrada{closedRows.length > 1 ? "s" : ""}
                   </td>
                 </tr>
                 {showClosed && closedRows.map((row) => {
                   const resultado = row.carteiraBrl - row.aporteBrl;
                   return (
-                    <tr key={row.symbol} className="border-b border-border/50 opacity-50">
-                      <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
-                      <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
-                      <td className="px-3 py-2 text-sm font-mono text-right text-muted">—</td>
-                      <td className="px-3 py-2 text-sm font-mono text-right"><span className={resultado >= 0 ? "text-accent" : "text-danger"}>{resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}</span></td>
+                    <tr key={row.symbol} className="border-b border-border/40 opacity-50">
+                      <td className="px-4 py-2 text-sm font-mono font-semibold text-muted">{row.symbol}</td>
+                      <td className="px-4 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                      <td className="px-4 py-2 text-sm font-mono text-right text-muted">—</td>
+                      <td className={`px-4 py-2 text-sm font-mono text-right ${resultado >= 0 ? "text-accent" : "text-danger"}`}>{resultado >= 0 ? "+" : ""}{fmtDisplay(resultado, "BRL")}</td>
+                      <td className="px-4 py-2" />
                     </tr>
                   );
                 })}
               </>
             )}
-            <tr className="border-t border-border bg-surface-2">
-              <td className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
-              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">{formatCurrency(totalAporte, "BRL")}</td>
-              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">{formatCurrency(totalCarteira, "BRL")}</td>
-              <td />
+            <tr className="border-t-2 border-border bg-surface-2">
+              <td className="px-4 py-3 text-xs font-bold text-muted uppercase tracking-wider">Total</td>
+              <td className="px-4 py-3 text-sm font-mono text-right text-muted">{fmtDisplay(totalAporte, "BRL")}</td>
+              <td className="px-4 py-3 text-sm font-mono text-right font-bold text-text-primary">{fmtDisplay(totalCarteira, "BRL")}</td>
+              <td className={`px-4 py-3 text-sm font-mono text-right font-bold ${totalCarteira >= totalAporte ? "text-accent" : "text-danger"}`}>
+                {totalCarteira >= totalAporte ? "+" : ""}{fmtDisplay(totalCarteira - totalAporte, "BRL")}
+              </td>
+              <td className="px-4 py-3 text-right">
+                {totalAporte > 0 && <RetornoBadge pct={(totalCarteira - totalAporte) / totalAporte * 100} />}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -903,20 +921,18 @@ function MarketTable({ group }: { group: TagGroup }) {
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
+            <tr className="bg-surface-2/60 border-b border-border">
               {[
                 "Símbolo",
                 usd ? "Preço (USD)" : "Preço",
                 "Qtd",
-                "Aporte (R$)",
-                "Carteira (R$)",
+                "Aporte",
+                "Carteira",
+                "Ganho",
                 "Retorno",
                 "Peso",
               ].map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-3 py-2 text-xs uppercase tracking-wider text-muted font-medium ${i === 0 ? "text-left" : "text-right"}`}
-                >
+                <th key={h} className={`px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted font-semibold ${i === 0 ? "text-left" : "text-right"}`}>
                   {h}
                 </th>
               ))}
@@ -924,32 +940,42 @@ function MarketTable({ group }: { group: TagGroup }) {
           </thead>
           <tbody className="divide-y divide-border">
             {openRows.map((row) => {
-              const retPct = row.aporteBrl > 0 ? ((row.carteiraBrl - row.aporteBrl) / row.aporteBrl) * 100 : 0;
+              const ganho = row.carteiraBrl - row.aporteBrl;
+              const retPct = row.aporteBrl > 0 ? (ganho / row.aporteBrl) * 100 : 0;
               const peso = group.totalCarteira > 0 ? (row.carteiraBrl / group.totalCarteira) * 100 : 0;
+              const profitable = row.carteiraBrl > 0 && ganho >= 0;
+              const priceStr = row.currentPrice !== null
+                ? row.priceCurrency === "USD"
+                  ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : fmtDisplay(row.currentPrice, "BRL")
+                : "—";
+              const qtyStr = row.qty % 1 === 0
+                ? row.qty.toLocaleString("pt-BR")
+                : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 });
               return (
                 <tr key={row.symbol} className="hover:bg-surface-2 transition-colors">
-                  <td className="px-3 py-2.5 text-sm font-mono font-semibold text-primary">{row.symbol}</td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                    {row.currentPrice !== null
-                      ? row.priceCurrency === "USD"
-                        ? `$${row.currentPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : fmtDisplay(row.currentPrice, "BRL")
-                      : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                    {row.qty % 1 === 0
-                      ? row.qty.toLocaleString("pt-BR")
-                      : row.qty.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 5 })}
-                  </td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">{fmtDisplay(row.aporteBrl, "BRL")}</td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-right text-text-primary">
+                  <td className="px-4 py-3 text-sm font-mono font-bold text-primary">{row.symbol}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-right text-muted">{priceStr}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-right text-muted">{qtyStr}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-right text-muted">{fmtDisplay(row.aporteBrl, "BRL")}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-right font-semibold text-text-primary">
                     {row.carteiraBrl > 0 ? fmtDisplay(row.carteiraBrl, "BRL") : "—"}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className={`px-4 py-3 text-sm font-mono text-right font-medium ${row.carteiraBrl > 0 ? (profitable ? "text-accent" : "text-danger") : "text-muted"}`}>
+                    {row.carteiraBrl > 0 ? `${profitable ? "+" : ""}${fmtDisplay(ganho, "BRL")}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     {row.carteiraBrl > 0 ? <RetornoBadge pct={retPct} /> : <span className="text-xs text-muted">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-sm font-mono text-right text-muted">
-                    {row.carteiraBrl > 0 ? `${Math.round(peso)}%` : "—"}
+                  <td className="px-4 py-3">
+                    {row.carteiraBrl > 0 ? (
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-xs font-mono text-muted w-8 text-right">{Math.round(peso)}%</span>
+                        <div className="w-14 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                          <div className="h-full rounded-full bg-primary/70 transition-all" style={{ width: `${peso}%` }} />
+                        </div>
+                      </div>
+                    ) : <span className="block text-right text-xs text-muted">—</span>}
                   </td>
                 </tr>
               );
@@ -958,50 +984,46 @@ function MarketTable({ group }: { group: TagGroup }) {
           <tfoot>
             {allClosed.length > 0 && (
               <>
-                <tr
-                  className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors"
-                  onClick={() => setShowClosed((v) => !v)}
-                >
-                  <td colSpan={7} className="px-3 py-2 text-xs text-muted">
-                    {showClosed ? "▼" : "▶"} {allClosed.length} encerrada{allClosed.length > 1 ? "s" : ""}
+                <tr className="border-t border-border cursor-pointer hover:bg-surface-2 transition-colors" onClick={() => setShowClosed((v) => !v)}>
+                  <td colSpan={8} className="px-4 py-2.5 text-xs text-muted">
+                    {showClosed ? "▼" : "▶"} {allClosed.length} posição{allClosed.length > 1 ? "s" : ""} encerrada{allClosed.length > 1 ? "s" : ""}
                   </td>
                 </tr>
                 {showClosed && (
                   <>
-                    <tr className="bg-surface-2/50">
-                      {["Símbolo", "Compra", "Venda", "Resultado", "%", "", ""].map((h, i) => (
-                        <td key={i} className={`px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted ${i > 0 ? "text-right" : ""}`}>
-                          {h}
-                        </td>
+                    <tr className="bg-surface-2/40 border-b border-border/50">
+                      {["Símbolo", "", "", "Compra", "Venda", "Resultado", "%", ""].map((h, i) => (
+                        <td key={i} className={`px-4 py-1.5 text-[10px] uppercase tracking-wider text-muted font-semibold ${i > 0 ? "text-right" : ""}`}>{h}</td>
                       ))}
                     </tr>
                     {allClosed.map((c, i) => (
-                      <tr key={i} className="border-b border-border/50 opacity-60">
-                        <td className="px-3 py-2 text-sm font-mono font-semibold text-muted">{c.symbol}</td>
-                        <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.buysTotal, "BRL")}</td>
-                        <td className="px-3 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</td>
-                        <td className="px-3 py-2 text-sm font-mono text-right">
-                          <span className={c.result >= 0 ? "text-accent" : "text-danger"}>
-                            {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right"><RetornoBadge pct={c.resultPct} /></td>
+                      <tr key={i} className="border-b border-border/40 opacity-55">
+                        <td className="px-4 py-2 text-sm font-mono font-bold text-muted">{c.symbol}</td>
                         <td colSpan={2} />
+                        <td className="px-4 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.buysTotal, "BRL")}</td>
+                        <td className="px-4 py-2 text-sm font-mono text-right text-muted">{fmtDisplay(c.sellsTotal, "BRL")}</td>
+                        <td className={`px-4 py-2 text-sm font-mono text-right ${c.result >= 0 ? "text-accent" : "text-danger"}`}>
+                          {c.result >= 0 ? "+" : ""}{fmtDisplay(c.result, "BRL")}
+                        </td>
+                        <td className="px-4 py-2 text-right"><RetornoBadge pct={c.resultPct} /></td>
+                        <td />
                       </tr>
                     ))}
                   </>
                 )}
               </>
             )}
-            <tr className="border-t border-border bg-surface-2">
-              <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted uppercase">Total</td>
-              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-                {fmtDisplay(totalAporte, "BRL")}
+            <tr className="border-t-2 border-border bg-surface-2">
+              <td colSpan={3} className="px-4 py-3 text-xs font-bold text-muted uppercase tracking-wider">Total</td>
+              <td className="px-4 py-3 text-sm font-mono text-right text-muted">{fmtDisplay(totalAporte, "BRL")}</td>
+              <td className="px-4 py-3 text-sm font-mono text-right font-bold text-text-primary">{fmtDisplay(totalCarteira, "BRL")}</td>
+              <td className={`px-4 py-3 text-sm font-mono text-right font-bold ${totalCarteira >= totalAporte ? "text-accent" : "text-danger"}`}>
+                {totalCarteira >= totalAporte ? "+" : ""}{fmtDisplay(totalCarteira - totalAporte, "BRL")}
               </td>
-              <td className="px-3 py-2 text-sm font-mono text-right font-semibold text-text-primary">
-                {fmtDisplay(totalCarteira, "BRL")}
+              <td className="px-4 py-3 text-right">
+                {totalAporte > 0 && <RetornoBadge pct={(totalCarteira - totalAporte) / totalAporte * 100} />}
               </td>
-              <td colSpan={2} />
+              <td />
             </tr>
           </tfoot>
         </table>
@@ -1151,7 +1173,7 @@ export default function InvestmentsPage() {
     },
     hover: { mode: "index" as const, intersect: false },
     scales: {
-      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 12 } },
+      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 6 } },
       y: {
         ...AXIS_STYLE,
         ticks: {
@@ -1265,12 +1287,17 @@ export default function InvestmentsPage() {
   ];
 
   return (
-    <div className="px-4 md:px-6 py-5 space-y-6">
+    <div className="px-4 md:px-6 py-5 space-y-5">
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-lg font-semibold text-text-primary">Investimentos</h1>
         {saldoTotal > 0 && (
           <p className="text-xs text-muted mt-0.5">
-            Carteira atual: <span className={`font-mono font-semibold ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>{fmtDisplay(saldoTotal, "BRL")}</span>
+            Carteira atual:{" "}
+            <span className={`font-mono font-semibold ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>
+              {fmtDisplay(saldoTotal, "BRL")}
+            </span>
           </p>
         )}
       </div>
@@ -1278,10 +1305,7 @@ export default function InvestmentsPage() {
       {/* ── KPIs ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map(({ label, value, color, accent, badge }) => (
-          <div
-            key={label}
-            className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 space-y-1`}
-          >
+          <div key={label} className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 space-y-1`}>
             <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
             <div className="flex items-center gap-2 flex-wrap">
               <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
@@ -1297,15 +1321,17 @@ export default function InvestmentsPage() {
         </div>
       ) : (
         <>
-          {/* ── Charts ────────────────────────────────────────────────────── */}
-          <div className="space-y-5">
+          {/* ── Charts: linha do tempo + donut lado a lado no desktop ─────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[62%_38%] gap-5 items-start">
+
+            {/* Linha do tempo */}
             <div className="bg-surface border border-border rounded-xl p-5">
-              <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-                <p className="text-xs uppercase tracking-wider text-muted">
-                  Carteira vs Investido (histórico)
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <p className="text-xs uppercase tracking-wider text-muted shrink-0">
+                  Evolução da Carteira
                 </p>
                 {groups.length > 1 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 min-w-0">
                     {groups.map((g, i) => {
                       const active = chartTagFilter.includes(g.tagName);
                       return (
@@ -1313,50 +1339,33 @@ export default function InvestmentsPage() {
                           key={g.tagName}
                           onClick={() =>
                             setChartTagFilter((prev) =>
-                              active
-                                ? prev.filter((n) => n !== g.tagName)
-                                : [...prev, g.tagName],
+                              active ? prev.filter((n) => n !== g.tagName) : [...prev, g.tagName]
                             )
                           }
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                          className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
                             active || chartTagFilter.length === 0
                               ? "border-transparent text-[#070B11]"
                               : "border-border bg-transparent text-muted hover:text-text-primary"
                           }`}
-                          style={
-                            active || chartTagFilter.length === 0
-                              ? {
-                                  backgroundColor:
-                                    GROUP_COLORS[i % GROUP_COLORS.length],
-                                }
-                              : {}
-                          }
+                          style={active || chartTagFilter.length === 0 ? { backgroundColor: GROUP_COLORS[i % GROUP_COLORS.length] } : {}}
                         >
                           <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{
-                              background:
-                                active || chartTagFilter.length === 0
-                                  ? "#070B11"
-                                  : GROUP_COLORS[i % GROUP_COLORS.length],
-                            }}
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: active || chartTagFilter.length === 0 ? "#070B11" : GROUP_COLORS[i % GROUP_COLORS.length] }}
                           />
                           {g.tagName}
                         </button>
                       );
                     })}
                     {chartTagFilter.length > 0 && (
-                      <button
-                        onClick={() => setChartTagFilter([])}
-                        className="px-2 py-1 text-xs text-muted hover:text-text-primary transition-colors"
-                      >
-                        Limpar
+                      <button onClick={() => setChartTagFilter([])} className="shrink-0 px-2 py-1 text-xs text-muted hover:text-text-primary transition-colors">
+                        ✕
                       </button>
                     )}
                   </div>
                 )}
               </div>
-              <div style={{ height: 280 }}>
+              <div className="h-[220px] md:h-[300px]">
                 {lineData ? (
                   <Line data={lineData} options={lineOptions} />
                 ) : (
@@ -1367,106 +1376,75 @@ export default function InvestmentsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[38%_62%] gap-5">
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <p className="text-xs uppercase tracking-wider text-muted mb-4">
-                  Distribuição dos Pesos
-                </p>
-                <div className="flex items-center gap-6 flex-wrap">
-                  <div
-                    className="relative flex-shrink-0"
-                    style={{ width: 180, height: 180 }}
-                  >
-                    <Doughnut data={donutData} options={donutOptions} />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-[10px] uppercase tracking-wider text-muted">
-                        Total
-                      </span>
-                      <span className="text-sm font-bold font-mono text-text-primary mt-0.5">
-                        {fmtDisplay(saldoTotal, "BRL")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 flex-1 min-w-[140px]">
-                    {groups.map((g, i) => {
-                      const pct =
-                        saldoTotal > 0
-                          ? ((g.totalCarteira / saldoTotal) * 100).toFixed(1)
-                          : "0.0";
-                      return (
-                        <div
-                          key={g.tagName}
-                          className="flex items-center gap-2"
-                        >
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{
-                              background: GROUP_COLORS[i % GROUP_COLORS.length],
-                            }}
-                          />
-                          <span className="text-xs text-muted flex-1">
-                            {g.tagName}
-                          </span>
-                          <span className="text-xs font-mono text-muted w-10 text-right">
-                            {pct}%
-                          </span>
-                        </div>
-                      );
-                    })}
+            {/* Donut — alocação */}
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <p className="text-xs uppercase tracking-wider text-muted mb-5">Alocação</p>
+              <div className="flex flex-col items-center gap-5">
+                <div className="relative" style={{ width: 180, height: 180 }}>
+                  <Doughnut data={donutData} options={donutOptions} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] uppercase tracking-wider text-muted">Total</span>
+                    <span className="text-sm font-bold font-mono text-text-primary mt-0.5">{fmtDisplay(saldoTotal, "BRL")}</span>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <p className="text-xs uppercase tracking-wider text-muted mb-4">
-                  Aportes vs Resgates por Mês
-                </p>
-                <div style={{ height: 220 }}>
-                  {monthlyFlow.length > 0 ? (
-                    <Bar data={barData} options={barOptions} />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-sm text-muted">
-                      Sem dados.
-                    </div>
-                  )}
+                <div className="w-full space-y-2.5">
+                  {groups.map((g, i) => {
+                    const pct = saldoTotal > 0 ? ((g.totalCarteira / saldoTotal) * 100) : 0;
+                    return (
+                      <div key={g.tagName}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: GROUP_COLORS[i % GROUP_COLORS.length] }} />
+                          <span className="text-xs text-muted flex-1 truncate">{g.tagName}</span>
+                          <span className="text-xs font-mono font-medium text-text-primary">{pct.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-surface-3 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%`, background: GROUP_COLORS[i % GROUP_COLORS.length] }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Tables (2 per row) ─────────────────────────────────────────── */}
+          {/* ── Bar: aportes vs resgates ──────────────────────────────────── */}
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <p className="text-xs uppercase tracking-wider text-muted mb-4">Aportes vs Resgates por Mês</p>
+            <div className="h-[160px] md:h-[200px]">
+              {monthlyFlow.length > 0 ? (
+                <Bar data={barData} options={barOptions} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-muted">Sem dados.</div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Tables ────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {groups.map((group) => (
-              <div
-                key={group.tagName}
-                className="bg-surface border border-border rounded-xl overflow-hidden"
-              >
-                <div className="flex items-center justify-between px-4 py-3 bg-surface-2 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-text-primary">
-                      {group.tagName}
-                    </span>
-                    {group.oldestLastUpdate ? (
-                      <span className="text-xs text-muted">
-                        · {group.oldestLastUpdate.split("-").reverse().join("/")}
-                      </span>
-                    ) : null}
+            {groups.map((group, i) => (
+              <div key={group.tagName} className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b border-border"
+                  style={{ borderLeft: `3px solid ${GROUP_COLORS[i % GROUP_COLORS.length]}`, background: "#141A22" }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-semibold text-text-primary truncate">{group.tagName}</span>
+                    {group.oldestLastUpdate && (
+                      <span className="text-xs text-muted shrink-0">· {group.oldestLastUpdate.split("-").reverse().join("/")}</span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-xs font-mono font-semibold ${group.retornoBrl >= 0 ? "text-accent" : "text-danger"}`}
-                    >
-                      {group.retornoBrl >= 0 ? "+" : ""}
-                      {fmtDisplay(group.retornoBrl, "BRL")}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-mono font-semibold ${group.retornoBrl >= 0 ? "text-accent" : "text-danger"}`}>
+                      {group.retornoBrl >= 0 ? "+" : ""}{fmtDisplay(group.retornoBrl, "BRL")}
                     </span>
                     <RetornoBadge pct={group.retornoPct} />
                   </div>
                 </div>
-                {group.isFixedIncome ? (
-                  <FixedIncomeTable rows={group.rows} />
-                ) : (
-                  <MarketTable group={group} />
-                )}
+                {group.isFixedIncome ? <FixedIncomeTable rows={group.rows} /> : <MarketTable group={group} />}
               </div>
             ))}
           </div>
