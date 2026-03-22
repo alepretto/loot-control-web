@@ -254,31 +254,7 @@ export default function SummaryPage() {
 
   // ── Chart data ─────────────────────────────────────────────────────────────
 
-  // Family bar chart
   const resolvedSelectedFamilyId = selectedFamilyId === "__none__" ? null : selectedFamilyId;
-
-  const familyBarItems = familyGroups.map((g, i) => ({
-    id: g.familyId ?? "__none__",
-    name: g.familyName,
-    value: g.outcome,
-    color: DONUT_COLORS[i % DONUT_COLORS.length],
-  }));
-
-  const familyBarChartData = {
-    labels: familyBarItems.map(x => x.name),
-    datasets: [{
-      data: familyBarItems.map(x => x.value),
-      backgroundColor: familyBarItems.map(x =>
-        selectedFamilyId === null
-          ? x.color + "CC"
-          : selectedFamilyId === x.id ? x.color + "FF" : x.color + "33"
-      ),
-      borderColor: familyBarItems.map(x => x.color),
-      borderWidth: 1,
-      borderRadius: 4,
-      barThickness: 22,
-    }],
-  };
 
   // Category bar chart (filtered by selected family)
   const categoryBarItems = categories
@@ -493,17 +469,6 @@ export default function SummaryPage() {
     };
   }
 
-  const familyBarOptions = makeBarOptions((_evt, elements) => {
-    if (!elements.length) return;
-    const item = familyBarItems[elements[0].index];
-    if (!item) return;
-    if (selectedFamilyId === item.id) {
-      setSelectedFamilyId(null); setSelectedCategoryId(null); setSelectedTagId(null);
-    } else {
-      setSelectedFamilyId(item.id); setSelectedCategoryId(null); setSelectedTagId(null);
-    }
-  });
-
   const categoryBarOptions = makeBarOptions((_evt, elements) => {
     if (!elements.length) return;
     const item = categoryBarItems[elements[0].index];
@@ -638,60 +603,86 @@ export default function SummaryPage() {
 
       {/* Main content */}
       {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6 items-start animate-pulse">
-          <div className="space-y-5">
-            <div className="bg-surface border border-border rounded-xl p-5 h-72" />
-            <div className="bg-surface border border-border rounded-xl p-5 h-64" />
-          </div>
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-surface border border-border rounded-xl h-14" />
-            ))}
+        <div className="space-y-5 animate-pulse">
+          <div className="bg-surface border border-border rounded-xl p-5 h-64" />
+          <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6">
+            <div className="space-y-5">
+              <div className="bg-surface border border-border rounded-xl p-5 h-48" />
+              <div className="bg-surface border border-border rounded-xl p-5 h-48" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-surface border border-border rounded-xl h-14" />
+              ))}
+            </div>
           </div>
         </div>
       ) : (
         <>
+        {/* Tendência — full width */}
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <p className="text-xs uppercase tracking-wider text-muted mb-4">Tendência — últimos 6 meses</p>
+          {trendMonths.every(m => m.income === 0 && m.outcome === 0) ? (
+            <p className="text-sm text-muted text-center py-10">Sem histórico suficiente.</p>
+          ) : (
+            <div style={{ height: 220 }}>
+              <Line data={trendChartData} options={trendOptions} />
+            </div>
+          )}
+        </div>
+
+        {/* Grid principal: gráficos (esq) + cards de família (dir) */}
         <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6">
 
-          {/* ── Left column ─────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-5">
+          {/* ── Left: categoria + tag empilhados ─────────────────────────── */}
+          <div className="space-y-5">
 
-            {/* Tendência 6 meses — principal insight */}
-            <div className="bg-surface border border-border rounded-xl p-5 shrink-0">
-              <p className="text-xs uppercase tracking-wider text-muted mb-4">Tendência — últimos 6 meses</p>
-              {trendMonths.every(m => m.income === 0 && m.outcome === 0) ? (
-                <p className="text-sm text-muted text-center py-10">Sem histórico suficiente.</p>
-              ) : (
-                <div style={{ height: 220 }}>
-                  <Line data={trendChartData} options={trendOptions} />
+            {/* Por Categoria */}
+            {categoryBarItems.length > 0 && (
+              <div className="bg-surface border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs uppercase tracking-wider text-muted">Por Categoria</p>
+                    {selectedFamilyId !== null && (
+                      <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                        {families.find(f => f.id === resolvedSelectedFamilyId)?.name ?? "Sem Família"}
+                      </span>
+                    )}
+                  </div>
+                  {selectedCategoryId !== null && (
+                    <button onClick={() => { setSelectedCategoryId(null); setSelectedTagId(null); }} className="text-xs text-muted hover:text-text-primary">✕</button>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Gastos por Família — barra horizontal, preenche espaço restante */}
-            <div className="bg-surface border border-border rounded-xl p-5 flex flex-col flex-1 min-h-0">
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <p className="text-xs uppercase tracking-wider text-muted">Gastos por Família</p>
-                {selectedFamilyId !== null && (
-                  <button
-                    onClick={() => { setSelectedFamilyId(null); setSelectedCategoryId(null); setSelectedTagId(null); }}
-                    className="text-xs text-muted hover:text-text-primary"
-                  >
-                    ✕ limpar
-                  </button>
-                )}
+                <div style={{ height: Math.max(140, categoryBarItems.length * 32 + 40) }}>
+                  <Bar data={categoryBarChartData} options={categoryBarOptions} />
+                </div>
               </div>
-              {familyGroups.length === 0 ? (
-                <p className="text-sm text-muted text-center py-10">Sem dados de saída.</p>
-              ) : (
-                <div className="flex-1 min-h-0" style={{ minHeight: familyBarItems.length * 32 + 40 }}>
-                  <Bar data={familyBarChartData} options={familyBarOptions} />
+            )}
+
+            {/* Por Tag */}
+            {tagBarItems.length > 0 && (
+              <div className="bg-surface border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs uppercase tracking-wider text-muted">Por Tag</p>
+                    {selectedCategoryId !== null && (
+                      <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                        {categories.find(c => c.id === selectedCategoryId)?.name ?? "—"}
+                      </span>
+                    )}
+                  </div>
+                  {selectedTagId !== null && (
+                    <button onClick={() => setSelectedTagId(null)} className="text-xs text-muted hover:text-text-primary">✕</button>
+                  )}
                 </div>
-              )}
-            </div>
+                <div style={{ height: Math.max(140, tagBarItems.length * 32 + 40) }}>
+                  <Bar data={tagBarChartData} options={tagBarOptions} />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ── Right column: Family cards ───────────────────────────────── */}
+          {/* ── Right: Family cards — clicar seleciona, seta expande ─────── */}
           <div className="space-y-3">
             {familyGroups.length === 0 && (
               <p className="text-sm text-muted text-center py-8">Nenhuma transação neste mês.</p>
@@ -700,6 +691,7 @@ export default function SummaryPage() {
             {familyGroups.map((group, i) => {
               const key          = group.familyId ?? "__none__";
               const isExpanded   = expandedFamilies.has(key);
+              const isSelected   = selectedFamilyId === key;
               const familyColor  = DONUT_COLORS[i % DONUT_COLORS.length];
               const variation    = group.outcome - group.prevOutcome;
               const variationPct = group.prevOutcome > 0
@@ -708,22 +700,30 @@ export default function SummaryPage() {
               const pctOfIncome  = totalIncome > 0
                 ? ((group.outcome / totalIncome) * 100).toFixed(1)
                 : null;
-
-              // Alerta de desvio: acima de 20% do mês anterior
               const isSpike = variationPct !== null && Number(variationPct) > 20 && variation > 0;
+
+              function handleSelectFamily() {
+                if (isSelected) {
+                  setSelectedFamilyId(null); setSelectedCategoryId(null); setSelectedTagId(null);
+                } else {
+                  setSelectedFamilyId(key); setSelectedCategoryId(null); setSelectedTagId(null);
+                }
+              }
 
               return (
                 <div
                   key={key}
-                  className="bg-surface border border-border rounded-xl overflow-hidden"
-                  style={{ borderLeft: `3px solid ${familyColor}` }}
+                  className="bg-surface border border-border rounded-xl overflow-hidden transition-shadow"
+                  style={{ borderLeft: `${isSelected ? 4 : 3}px solid ${familyColor}` }}
                 >
-                  <button
-                    className="w-full flex items-center gap-2 px-4 py-3 bg-surface-2 border-b border-border hover:bg-surface-3 transition-colors text-left"
-                    onClick={() => toggleFamily(key)}
+                  {/* Header: click seleciona, seta expande */}
+                  <div
+                    className="flex items-center gap-2 px-4 py-3 border-b border-border cursor-pointer select-none transition-colors hover:bg-surface-3"
+                    style={{ background: isSelected ? familyColor + "18" : "#141A22" }}
+                    onClick={handleSelectFamily}
                   >
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
-                    <span className="text-sm font-semibold text-text-primary flex-1 text-left truncate">
+                    <span className="text-sm font-semibold text-text-primary flex-1 truncate">
                       {group.familyName}
                     </span>
 
@@ -748,8 +748,13 @@ export default function SummaryPage() {
                     <span className="text-sm font-mono font-semibold shrink-0" style={{ color: familyColor }}>
                       -{formatCurrency(group.outcome, displayCurrency)}
                     </span>
-                    <span className="text-muted text-xs">{isExpanded ? "▲" : "▼"}</span>
-                  </button>
+                    <button
+                      className="text-muted text-xs hover:text-text-primary shrink-0 px-1"
+                      onClick={(e) => { e.stopPropagation(); toggleFamily(key); }}
+                    >
+                      {isExpanded ? "▲" : "▼"}
+                    </button>
+                  </div>
 
                   {/* Expanded: categories + tag checklist */}
                   {isExpanded && (
@@ -825,56 +830,6 @@ export default function SummaryPage() {
             )}
           </div>
         </div>
-
-        {/* Categoria + Tag — lado a lado */}
-        {(categoryBarItems.length > 0 || tagBarItems.length > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-            {/* Gastos por Categoria */}
-            {categoryBarItems.length > 0 && (
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs uppercase tracking-wider text-muted">Por Categoria</p>
-                    {selectedFamilyId !== null && (
-                      <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                        {families.find(f => f.id === resolvedSelectedFamilyId)?.name ?? "Sem Família"}
-                      </span>
-                    )}
-                  </div>
-                  {selectedCategoryId !== null && (
-                    <button onClick={() => { setSelectedCategoryId(null); setSelectedTagId(null); }} className="text-xs text-muted hover:text-text-primary">✕</button>
-                  )}
-                </div>
-                <div style={{ height: Math.max(140, categoryBarItems.length * 32 + 40) }}>
-                  <Bar data={categoryBarChartData} options={categoryBarOptions} />
-                </div>
-              </div>
-            )}
-
-            {/* Gastos por Tag */}
-            {tagBarItems.length > 0 && (
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs uppercase tracking-wider text-muted">Por Tag</p>
-                    {selectedCategoryId !== null && (
-                      <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                        {categories.find(c => c.id === selectedCategoryId)?.name ?? "—"}
-                      </span>
-                    )}
-                  </div>
-                  {selectedTagId !== null && (
-                    <button onClick={() => setSelectedTagId(null)} className="text-xs text-muted hover:text-text-primary">✕</button>
-                  )}
-                </div>
-                <div style={{ height: Math.max(140, tagBarItems.length * 32 + 40) }}>
-                  <Bar data={tagBarChartData} options={tagBarOptions} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Transações filtradas */}
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
