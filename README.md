@@ -9,6 +9,7 @@ Frontend do **Loot Control** — sistema de acompanhamento de gastos, receitas e
 - **TailwindCSS** — dark theme com tokens personalizados
 - **Chart.js + react-chartjs-2** — gráficos (Resumo e Investimentos)
 - **Supabase** — autenticação SSR (email/senha)
+- **@ducanh2912/next-pwa** — PWA com service worker e offline caching
 
 ## Pré-requisitos
 
@@ -24,6 +25,7 @@ Crie um arquivo `.env.local` na raiz:
 NEXT_PUBLIC_SUPABASE_URL=https://<projeto>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon_key>
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=<nome_do_bot>   # opcional — habilita Mini App
 ```
 
 ## Desenvolvimento
@@ -37,18 +39,26 @@ Aplicação disponível em `http://localhost:3000`.
 
 ## Autenticação
 
-O middleware (`src/middleware.ts`) protege todas as rotas exceto `/` e `/login`. O JWT do Supabase é anexado automaticamente em todas as requisições ao backend via `src/lib/api.ts`. Em caso de 401 o usuário é redirecionado para `/login`. Após login bem-sucedido, redireciona para `/summary`.
+O middleware (`src/proxy.ts`) protege todas as rotas exceto `/`, `/login` e `/mini/login`. O JWT do Supabase é anexado automaticamente em todas as requisições ao backend via `src/lib/api.ts`. Em caso de 401 o usuário é redirecionado para `/login`. Após login bem-sucedido, redireciona para `/summary`.
+
+> **Next.js 15:** o middleware usa o arquivo `proxy.ts` — **não criar `middleware.ts`** no mesmo diretório, causa erro de build.
 
 ## Rotas
 
 | Rota           | Acesso    | Descrição                                      |
 |----------------|-----------|------------------------------------------------|
-| `/`            | Público   | Landing page                                   |
-| `/login`       | Público   | Login / cadastro via Supabase                  |
-| `/summary`     | Protegido | Resumo mensal (gastos + investido)             |
-| `/investments` | Protegido | Carteira de investimentos                      |
-| `/transactions`| Protegido | Lançamentos estilo planilha                    |
-| `/tags`        | Protegido | Gestão de famílias, categorias e tags          |
+| `/`              | Público        | Landing page                                   |
+| `/login`         | Público        | Login / cadastro via Supabase                  |
+| `/summary`       | Protegido      | Resumo mensal (gastos + investido)             |
+| `/investments`   | Protegido      | Carteira de investimentos                      |
+| `/transactions`  | Protegido      | Lançamentos estilo planilha                    |
+| `/tags`          | Protegido      | Gestão de famílias, categorias e tags          |
+| `/chat`          | Protegido      | Chat com agente IA                             |
+| `/settings`      | Protegido      | Configurações do usuário                       |
+| `/guide`         | Protegido      | Guia de uso                                    |
+| `/admin`         | Admin          | Painel administrativo                          |
+| `/mini/*`        | Telegram       | Mini App (layout próprio para Telegram)        |
+| `/demo`          | Público        | Demo do produto                                |
 
 ---
 
