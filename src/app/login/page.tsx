@@ -127,13 +127,10 @@ export default function LoginPage() {
 
         <div className="relative flex flex-col h-full p-10 xl:p-12">
 
-          {/* Logo */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary/10 rounded-2xl blur-xl scale-110 pointer-events-none" />
-              <Image src="/logo.png" alt="Loot Control" width={160} height={160} className="relative rounded-2xl" priority />
-            </div>
-            <span className="text-sm font-semibold text-muted tracking-widest uppercase">Loot Control</span>
+          {/* Logo — ícone pequeno no canto */}
+          <div className="flex items-center gap-3">
+            <Image src="/nav-icon.png" alt="Loot Control" width={34} height={34} className="rounded-xl" />
+            <span className="text-base font-semibold text-text-primary tracking-tight">Loot Control</span>
           </div>
 
           {/* Main copy */}
@@ -207,13 +204,12 @@ export default function LoginPage() {
             Voltar ao início
           </Link>
 
-          {/* Mobile logo */}
-          <div className="flex flex-col items-center gap-2 mb-8 lg:hidden">
+          {/* Logo grande — visível em todos os tamanhos no painel do form */}
+          <div className="flex justify-center mb-8">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/10 rounded-2xl blur-xl scale-110 pointer-events-none" />
-              <Image src="/logo.png" alt="Loot Control" width={120} height={120} className="relative rounded-2xl" priority />
+              <Image src="/logo.png" alt="Loot Control" width={140} height={140} className="relative rounded-2xl" priority />
             </div>
-            <span className="text-xs font-semibold text-muted tracking-widest uppercase">Loot Control</span>
           </div>
 
           {/* Heading */}
