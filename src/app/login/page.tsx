@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { tagFamiliesApi } from "@/lib/api";
 
-type Tab = "login" | "signup";
+type Tab = "login" | "signup" | "forgot";
 type Feedback = { type: "error" | "success"; message: string };
 
 export default function LoginPage() {
@@ -29,6 +30,9 @@ export default function LoginPage() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
 
+  // Forgot password
+  const [forgotEmail, setForgotEmail] = useState("");
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -39,7 +43,32 @@ export default function LoginPage() {
       setFeedback({ type: "error", message: error.message });
       setLoading(false);
     } else {
-      router.push("/summary");
+      try {
+        const families = await tagFamiliesApi.list();
+        router.push(families.length === 0 ? "/onboarding" : "/summary");
+      } catch {
+        router.push("/summary");
+      }
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setFeedback(null);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+    });
+
+    setLoading(false);
+    if (error) {
+      setFeedback({ type: "error", message: error.message });
+    } else {
+      setFeedback({
+        type: "success",
+        message: "Link enviado! Verifique seu e-mail para redefinir a senha.",
+      });
     }
   }
 
@@ -59,6 +88,7 @@ export default function LoginPage() {
       password: signupPassword,
       options: {
         data: { username, first_name: firstName, last_name: lastName },
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
       },
     });
 
@@ -121,24 +151,26 @@ export default function LoginPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex mb-4 bg-surface rounded-xl border border-border p-1">
-          {(["login", "signup"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => {
-                setTab(t);
-                setFeedback(null);
-              }}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                tab === t
-                  ? "bg-primary text-white shadow-glow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {t === "login" ? "Entrar" : "Cadastrar"}
-            </button>
-          ))}
-        </div>
+        {tab !== "forgot" && (
+          <div className="flex mb-4 bg-surface rounded-xl border border-border p-1">
+            {(["login", "signup"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setTab(t);
+                  setFeedback(null);
+                }}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  tab === t
+                    ? "bg-primary text-white shadow-glow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {t === "login" ? "Entrar" : "Cadastrar"}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="bg-surface rounded-xl border border-border p-6">
           {feedback && (
@@ -153,7 +185,35 @@ export default function LoginPage() {
             </div>
           )}
 
-          {tab === "login" ? (
+          {tab === "forgot" ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setTab("login"); setFeedback(null); }}
+                  className="inline-flex items-center gap-1 text-xs text-muted hover:text-text-primary transition-colors mb-3"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                    <path d="M19 12H5M12 5l-7 7 7 7" />
+                  </svg>
+                  Voltar ao login
+                </button>
+                <p className="text-sm font-medium text-text-primary mb-1">Recuperar senha</p>
+                <p className="text-xs text-muted">Enviaremos um link para redefinir sua senha.</p>
+              </div>
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  placeholder="seu@email.com"
+                  className={inputClass}
+                />
+              </Field>
+              <SubmitButton loading={loading} label="Enviar link" loadingLabel="Enviando..." />
+            </form>
+          ) : tab === "login" ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <Field label="Email">
                 <input
@@ -176,6 +236,15 @@ export default function LoginPage() {
                 />
               </Field>
               <SubmitButton loading={loading} label="Entrar" loadingLabel="Entrando..." />
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => { setTab("forgot"); setFeedback(null); }}
+                  className="text-xs text-muted hover:text-text-primary transition-colors"
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">

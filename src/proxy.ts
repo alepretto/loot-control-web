@@ -28,7 +28,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  const isPublicPath = pathname === "/" || pathname === "/login" || pathname === "/mini/login";
+  const isPublicPath =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/demo" ||
+    pathname === "/mini/login" ||
+    pathname.startsWith("/auth/");
 
   if (!user && !isPublicPath) {
     const loginPath = pathname.startsWith("/mini") ? "/mini/login" : "/login";
