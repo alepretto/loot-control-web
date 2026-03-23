@@ -7,21 +7,89 @@ import { formatCurrency } from "@/lib/utils";
 
 // ─── Fake data ────────────────────────────────────────────────────────────────
 
-const MONTH = "Março 2025";
+const MONTH = "Março 2026";
 
 const KPI_RESUMO = [
   { label: "Entradas", value: 8500, currency: "BRL", color: "text-accent", sign: "+" },
   { label: "Saídas", value: 4230, currency: "BRL", color: "text-danger", sign: "-" },
-  { label: "Saldo", value: 4270, currency: "BRL", color: "text-primary", sign: "+" },
-  { label: "Poupança", value: null, pct: "50,2%", color: "text-accent" },
+  { label: "Investido", value: 2000, currency: "BRL", color: "text-primary", sign: "-" },
+  { label: "Saldo", value: 2270, currency: "BRL", color: "text-text-primary", sign: "+" },
+  { label: "Poupança", value: null, pct: "26,7%", color: "text-accent" },
 ];
 
-const FAMILIES = [
-  { name: "Moradia", outcome: 2780, pct: 65.7, color: "#2563eb", categories: [{ name: "Aluguel", value: 2500 }, { name: "Contas", value: 280 }] },
-  { name: "Alimentação", outcome: 1200, pct: 28.4, color: "#22c55e", categories: [{ name: "Mercado", value: 750 }, { name: "Restaurantes", value: 450 }] },
-  { name: "Saúde", outcome: 120, pct: 2.8, color: "#f59e0b", categories: [{ name: "Academia", value: 120 }] },
-  { name: "Lazer", outcome: 80, pct: 1.9, color: "#8b5cf6", categories: [{ name: "Streaming", value: 80 }] },
-  { name: "Transporte", outcome: 50, pct: 1.2, color: "#8b949e", categories: [{ name: "Uber", value: 50 }] },
+const FAMILIES: {
+  name: string;
+  outcome: number;
+  pct: number;
+  color: string;
+  categories: { name: string; value: number }[];
+  tags: { name: string; paid: boolean }[];
+}[] = [
+  {
+    name: "Moradia",
+    outcome: 2780,
+    pct: 65.7,
+    color: "#2563eb",
+    categories: [{ name: "Aluguel", value: 2500 }, { name: "Contas", value: 280 }],
+    tags: [
+      { name: "Mensalidade Aluguel", paid: true },
+      { name: "Conta de Luz", paid: true },
+      { name: "Internet", paid: true },
+    ],
+  },
+  {
+    name: "Alimentação",
+    outcome: 1200,
+    pct: 28.4,
+    color: "#22c55e",
+    categories: [{ name: "Mercado", value: 750 }, { name: "Restaurantes", value: 450 }],
+    tags: [
+      { name: "Mercado", paid: true },
+      { name: "Restaurante", paid: true },
+    ],
+  },
+  {
+    name: "Saúde",
+    outcome: 120,
+    pct: 2.8,
+    color: "#f59e0b",
+    categories: [{ name: "Academia", value: 120 }],
+    tags: [
+      { name: "Academia", paid: true },
+      { name: "Farmácia", paid: true },
+    ],
+  },
+  {
+    name: "Lazer",
+    outcome: 80,
+    pct: 1.9,
+    color: "#8b5cf6",
+    categories: [{ name: "Streaming", value: 80 }],
+    tags: [
+      { name: "Netflix", paid: true },
+      { name: "Spotify", paid: true },
+    ],
+  },
+  {
+    name: "Transporte",
+    outcome: 50,
+    pct: 1.2,
+    color: "#8b949e",
+    categories: [{ name: "Uber", value: 50 }],
+    tags: [
+      { name: "Uber", paid: false },
+    ],
+  },
+];
+
+const TOP_CATEGORIES = [
+  { name: "Aluguel", value: 2500, max: 2500 },
+  { name: "Mercado", value: 750, max: 2500 },
+  { name: "Restaurantes", value: 450, max: 2500 },
+  { name: "Contas", value: 280, max: 2500 },
+  { name: "Academia", value: 120, max: 2500 },
+  { name: "Streaming", value: 80, max: 2500 },
+  { name: "Transporte", value: 50, max: 2500 },
 ];
 
 const TRANSACTIONS = [
@@ -34,6 +102,7 @@ const TRANSACTIONS = [
     date: "20 mar", items: [
       { time: "14:30", tag: "Mensalidade Aluguel", breadcrumb: "Moradia · Aluguel", value: 2500, income: false },
       { time: "10:20", tag: "Conta de Luz", breadcrumb: "Moradia · Contas", value: 150, income: false },
+      { time: "09:00", tag: "Aporte Ações", breadcrumb: "Investimentos · Ações", value: 1000, income: false, investment: true },
     ],
   },
   {
@@ -46,6 +115,7 @@ const TRANSACTIONS = [
     date: "15 mar", items: [
       { time: "20:00", tag: "Netflix", breadcrumb: "Lazer · Streaming", value: 39.90, income: false },
       { time: "08:00", tag: "Academia", breadcrumb: "Saúde · Academia", value: 120, income: false },
+      { time: "07:30", tag: "Aporte Cripto", breadcrumb: "Investimentos · Cripto", value: 1000, income: false, investment: true },
     ],
   },
   {
@@ -67,14 +137,14 @@ const TRANSACTIONS = [
   },
   {
     date: "01 mar", items: [
-      { time: "22:00", tag: "Uber", breadcrumb: "Transporte · Uber", value: 35, income: false },
+      { time: "22:00", tag: "Uber", breadcrumb: "Transporte · Transporte", value: 35, income: false },
       { time: "11:00", tag: "Mercado", breadcrumb: "Alimentação · Mercado", value: 200, income: false },
     ],
   },
 ];
 
 const INVESTMENT_KPIS = [
-  { label: "Total Aportado", value: "R$ 36.700", sub: "desde set/2024" },
+  { label: "Total Aportado", value: "R$ 38.700", sub: "desde set/2024" },
   { label: "Ativos", value: "8", sub: "em carteira" },
   { label: "Classes", value: "4", sub: "diversificado" },
 ];
@@ -172,7 +242,7 @@ export default function DemoPage() {
 
         {/* ────────────────────────── RESUMO ────────────────────────────── */}
         {tab === "resumo" && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Month selector */}
             <div className="flex items-center gap-3">
               <button className="w-7 h-7 flex items-center justify-center rounded-lg border border-border text-muted hover:text-text-primary hover:bg-surface-2 transition-colors">
@@ -184,8 +254,8 @@ export default function DemoPage() {
               </button>
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* KPIs — 5 cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {KPI_RESUMO.map((k) => (
                 <div key={k.label} className="bg-surface border border-border rounded-xl p-4">
                   <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">{k.label}</p>
@@ -196,39 +266,18 @@ export default function DemoPage() {
               ))}
             </div>
 
-            {/* Two columns: chart + families */}
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* Two columns: chart + family cards */}
+            <div className="grid lg:grid-cols-[55%_45%] gap-5">
 
-              {/* Left: spending bars */}
-              <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-border bg-surface-2">
-                  <h2 className="text-sm font-semibold text-text-primary">Gastos por família</h2>
-                </div>
-                <div className="p-5 space-y-3">
-                  {FAMILIES.map((f) => (
-                    <div key={f.name}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: f.color }} />
-                          <span className="text-xs font-medium text-text-secondary">{f.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-muted">{f.pct}%</span>
-                          <span className="text-xs font-mono text-text-primary">{formatCurrency(f.outcome, "BRL")}</span>
-                        </div>
-                      </div>
-                      <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${f.pct}%`, background: f.color }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Donut visual */}
-                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-center gap-4">
-                    <div className="relative w-24 h-24">
+              {/* Left: donut + top categories bar */}
+              <div className="space-y-4">
+                {/* Donut visual */}
+                <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border bg-surface-2">
+                    <h2 className="text-sm font-semibold text-text-primary">Gastos por família</h2>
+                  </div>
+                  <div className="p-5 flex items-center gap-6">
+                    <div className="relative w-28 h-28 shrink-0">
                       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                         {(() => {
                           let offset = 0;
@@ -256,21 +305,43 @@ export default function DemoPage() {
                         <span className="text-[11px] font-bold font-mono text-danger">-R$4.230</span>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex-1 space-y-2">
                       {FAMILIES.map((f) => (
                         <div key={f.name} className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: f.color }} />
-                          <span className="text-[11px] text-muted">{f.name}</span>
-                          <span className="text-[11px] font-mono text-text-secondary ml-auto pl-3">{f.pct}%</span>
+                          <span className="text-xs text-text-secondary flex-1">{f.name}</span>
+                          <span className="text-[11px] font-mono text-muted">{f.pct}%</span>
+                          <span className="text-[11px] font-mono text-text-primary w-20 text-right">{formatCurrency(f.outcome, "BRL")}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
+
+                {/* Top categories horizontal bars */}
+                <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border bg-surface-2">
+                    <h2 className="text-sm font-semibold text-text-primary">Top categorias</h2>
+                  </div>
+                  <div className="p-5 space-y-2.5">
+                    {TOP_CATEGORIES.map((c) => (
+                      <div key={c.name} className="flex items-center gap-3">
+                        <span className="text-xs text-text-secondary w-24 shrink-0 truncate">{c.name}</span>
+                        <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary/60 rounded-full"
+                            style={{ width: `${(c.value / c.max) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-mono text-muted w-20 text-right shrink-0">{formatCurrency(c.value, "BRL")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Right: family cards */}
-              <div className="space-y-3">
+              {/* Right: family cards with tag checklist */}
+              <div className="space-y-2">
                 {FAMILIES.map((f) => {
                   const isExpanded = expandedFamily === f.name;
                   return (
@@ -280,23 +351,43 @@ export default function DemoPage() {
                         className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-2 transition-colors text-left"
                       >
                         <div className="flex items-center gap-2">
+                          <span className="text-xs">{isExpanded ? "▼" : "▶"}</span>
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: f.color }} />
                           <span className="text-sm font-medium text-text-primary">{f.name}</span>
                           <span className="text-[10px] text-muted bg-surface-3 px-1.5 py-0.5 rounded font-mono">{f.pct}%</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono font-semibold text-danger">-{formatCurrency(f.outcome, "BRL")}</span>
-                          <span className="text-muted text-xs">{isExpanded ? "▲" : "▼"}</span>
-                        </div>
+                        <span className="text-sm font-mono font-semibold text-danger">-{formatCurrency(f.outcome, "BRL")}</span>
                       </button>
                       {isExpanded && (
-                        <div className="border-t border-border divide-y divide-border">
-                          {f.categories.map((c) => (
-                            <div key={c.name} className="flex items-center justify-between px-4 py-2">
-                              <span className="text-xs text-muted">{c.name}</span>
-                              <span className="text-xs font-mono text-text-secondary">-{formatCurrency(c.value, "BRL")}</span>
-                            </div>
-                          ))}
+                        <div className="border-t border-border">
+                          {/* Category breakdown */}
+                          <div className="divide-y divide-border/60">
+                            {f.categories.map((c) => (
+                              <div key={c.name} className="flex items-center justify-between px-4 py-2">
+                                <span className="text-xs text-muted">{c.name}</span>
+                                <span className="text-xs font-mono text-text-secondary">-{formatCurrency(c.value, "BRL")}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Tag checklist */}
+                          <div className="px-4 py-3 border-t border-border/40 space-y-1.5">
+                            {f.tags.map((t) => (
+                              <div key={t.name} className="flex items-center gap-2">
+                                <span className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
+                                  t.paid
+                                    ? "bg-accent/15 border-accent/40"
+                                    : "bg-surface-3 border-border"
+                                }`}>
+                                  {t.paid && (
+                                    <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-accent" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className={`text-xs ${t.paid ? "text-text-secondary" : "text-muted"}`}>{t.name}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -339,14 +430,18 @@ export default function DemoPage() {
                           gi < TRANSACTIONS.length - 1 || ti < group.items.length - 1 ? "border-b border-border/60" : ""
                         }`}
                       >
-                        <span className={`shrink-0 w-2 h-2 rounded-full ${tx.income ? "bg-accent" : "bg-danger"}`} />
+                        <span className={`shrink-0 w-2 h-2 rounded-full ${
+                          tx.income ? "bg-accent" : ("investment" in tx && tx.investment) ? "bg-primary" : "bg-danger"
+                        }`} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-text-primary truncate">{tx.tag}</div>
                           <div className="text-xs text-muted mt-0.5">{tx.breadcrumb}</div>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className={`text-sm font-mono font-semibold ${tx.income ? "text-accent" : "text-text-primary"}`}>
-                            {tx.income ? "+" : ""}{formatCurrency(tx.value, "BRL")}
+                          <div className={`text-sm font-mono font-semibold ${
+                            tx.income ? "text-accent" : ("investment" in tx && tx.investment) ? "text-primary" : "text-text-primary"
+                          }`}>
+                            {tx.income ? "+" : "-"}{formatCurrency(tx.value, "BRL")}
                           </div>
                           <div className="text-[10px] font-mono text-muted mt-0.5">{tx.time}</div>
                         </div>
@@ -443,6 +538,28 @@ export default function DemoPage() {
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-mono font-semibold text-text-primary w-16">{s.symbol}</span>
                         <span className="text-xs text-muted">{s.qty} cotas</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-mono text-text-primary">{formatCurrency(s.total, "BRL")}</div>
+                        <div className="text-[10px] text-muted font-mono">@ {formatCurrency(s.price, "BRL")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cripto */}
+              <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-border bg-surface-2 flex items-center gap-2">
+                  <span className="text-xs font-semibold text-text-primary">Cripto</span>
+                  <span className="text-[10px] text-muted bg-surface-3 border border-border px-1.5 py-0.5 rounded">{CRYPTO.length} ativos</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {CRYPTO.map((s) => (
+                    <div key={s.symbol} className="flex items-center justify-between px-5 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono font-semibold text-text-primary w-16">{s.symbol}</span>
+                        <span className="text-xs text-muted">{s.qty} unid.</span>
                       </div>
                       <div className="text-right">
                         <div className="text-xs font-mono text-text-primary">{formatCurrency(s.total, "BRL")}</div>
