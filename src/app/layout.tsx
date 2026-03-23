@@ -41,11 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className="dark">
       <body className={`${outfit.variable} ${jetbrainsMono.variable} bg-background text-text-primary antialiased font-sans`}>
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
-          }}
-        />
       </body>
     </html>
   );
