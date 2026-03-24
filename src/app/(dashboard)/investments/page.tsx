@@ -29,6 +29,7 @@ import {
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
+import { ChartFullscreen } from "@/components/ui/ChartFullscreen";
 
 ChartJS.register(
   LineElement,
@@ -1098,6 +1099,7 @@ export default function InvestmentsPage() {
   }, [loadData]);
 
   const [chartTagFilter, setChartTagFilter] = useState<string[]>([]);
+  const [portfolioFullscreen, setPortfolioFullscreen] = useState(false);
 
   const investmentTxs = useMemo(
     () => transactions.filter((tx) => tx.symbol || tx.index),
@@ -1405,9 +1407,18 @@ export default function InvestmentsPage() {
             {/* Linha do tempo */}
             <div className="bg-surface border border-border rounded-xl p-5">
               <div className="flex items-start justify-between gap-3 mb-4">
-                <p className="text-xs uppercase tracking-wider text-muted shrink-0">
-                  Evolução da Carteira
-                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <p className="text-xs uppercase tracking-wider text-muted">Evolução da Carteira</p>
+                  <button
+                    onClick={() => setPortfolioFullscreen(true)}
+                    className="text-muted hover:text-text-primary p-0.5 rounded transition-colors"
+                    title="Fullscreen"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                    </svg>
+                  </button>
+                </div>
                 {groups.length > 1 && (
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 min-w-0">
                     {groups.map((g, i) => {
@@ -1452,6 +1463,14 @@ export default function InvestmentsPage() {
                   </div>
                 )}
               </div>
+              {portfolioFullscreen && lineData && (
+                <ChartFullscreen
+                  title="Evolução da Carteira"
+                  onClose={() => setPortfolioFullscreen(false)}
+                >
+                  <Line data={lineData} options={lineOptions} />
+                </ChartFullscreen>
+              )}
             </div>
 
             {/* Donut — alocação */}

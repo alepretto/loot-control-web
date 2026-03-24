@@ -28,6 +28,7 @@ import {
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
+import { ChartFullscreen } from "@/components/ui/ChartFullscreen";
 
 ChartJS.register(Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, Title, BarElement, BarController, ArcElement);
 
@@ -104,6 +105,7 @@ export default function SummaryPage() {
   const [selectedFamilyId,   setSelectedFamilyId]   = useState<string | null>(null); // "__none__" = sem família
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedTagId,      setSelectedTagId]      = useState<string | null>(null);
+  const [trendFullscreen, setTrendFullscreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -657,7 +659,20 @@ export default function SummaryPage() {
         <>
         {/* Tendência — full width, primeiro */}
         <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs uppercase tracking-wider text-muted mb-4">Entradas vs Saídas — últimos 6 meses</p>
+          <div className="flex items-center gap-2 mb-4">
+            <p className="text-xs uppercase tracking-wider text-muted">Entradas vs Saídas — últimos 6 meses</p>
+            {!trendMonths.every(m => m.income === 0 && m.outcome === 0) && (
+              <button
+                onClick={() => setTrendFullscreen(true)}
+                className="text-muted hover:text-text-primary p-0.5 rounded transition-colors"
+                title="Fullscreen"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+              </button>
+            )}
+          </div>
           {trendMonths.every(m => m.income === 0 && m.outcome === 0) ? (
             <div className="flex items-center justify-center py-10">
               <p className="text-sm text-muted">Aguardando histórico...</p>
@@ -666,6 +681,14 @@ export default function SummaryPage() {
             <div className="h-[200px] md:h-[240px]">
               <Line data={trendChartData} options={trendOptions} />
             </div>
+          )}
+          {trendFullscreen && (
+            <ChartFullscreen
+              title="Entradas vs Saídas — últimos 6 meses"
+              onClose={() => setTrendFullscreen(false)}
+            >
+              <Line data={trendChartData} options={trendOptions} />
+            </ChartFullscreen>
           )}
         </div>
 
