@@ -81,6 +81,7 @@ const TOOLTIP_STYLE = {
   borderWidth: 1,
   titleColor: "#e6edf3",
   bodyColor: "#8b949e",
+  padding: 10,
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -296,7 +297,7 @@ export default function SummaryPage() {
       borderColor: categoryBarItems.map(x => x.color),
       borderWidth: 1,
       borderRadius: 4,
-      barThickness: 18,
+      maxBarThickness: 22,
     }],
   };
 
@@ -335,7 +336,7 @@ export default function SummaryPage() {
       borderColor: tagBarItems.map(x => x.color),
       borderWidth: 1,
       borderRadius: 4,
-      barThickness: 18,
+      maxBarThickness: 22,
     }],
   };
 
@@ -361,7 +362,7 @@ export default function SummaryPage() {
         label: "Entradas",
         data: trendMonths.map(m => m.income),
         borderColor: "#22c55e",
-        backgroundColor: "rgba(34,197,94,0.07)",
+        backgroundColor: "rgba(34,197,94,0.13)",
         fill: true,
         tension: 0.4,
         pointRadius: 3,
@@ -373,8 +374,8 @@ export default function SummaryPage() {
         label: "Saídas",
         data: trendMonths.map(m => m.outcome),
         borderColor: "#ef4444",
-        backgroundColor: "transparent",
-        fill: false,
+        backgroundColor: "rgba(239,68,68,0.08)",
+        fill: true,
         tension: 0.4,
         pointRadius: 3,
         pointHoverRadius: 6,
@@ -557,7 +558,7 @@ export default function SummaryPage() {
       backgroundColor: familyGroups.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]),
       borderColor: "#0E1218",
       borderWidth: 2,
-      hoverOffset: 4,
+      hoverOffset: 8,
     }],
   };
   const donutExpenseOptions = {
