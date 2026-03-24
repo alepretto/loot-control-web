@@ -575,10 +575,12 @@ const TOOLTIP_STYLE = {
   borderWidth: 1,
   titleColor: "#e6edf3",
   bodyColor: "#8b949e",
+  padding: 10,
 };
 const AXIS_STYLE = {
   ticks: { color: "#8b949e", font: { size: 10 } },
-  grid: { color: "#20282F" },
+  grid: { color: "#20282F99" },
+  border: { display: false },
 };
 const GROUP_COLORS = [
   "#2563eb",
@@ -1153,7 +1155,7 @@ export default function InvestmentsPage() {
               label: "Carteira",
               data: portfolioPoints.map((p) => p.value),
               borderColor: "#22c55e",
-              backgroundColor: "rgba(34,197,94,0.08)",
+              backgroundColor: "rgba(34,197,94,0.13)",
               fill: true,
               tension: 0.3,
               pointRadius: 0,
@@ -1182,7 +1184,7 @@ export default function InvestmentsPage() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: "#8b949e", font: { size: 11 } } },
+      legend: { labels: { color: "#8b949e", font: { size: 11 }, boxWidth: 20 } },
       tooltip: {
         ...TOOLTIP_STYLE,
         mode: "index" as const,
@@ -1259,7 +1261,7 @@ export default function InvestmentsPage() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: "#8b949e", font: { size: 11 } } },
+      legend: { labels: { color: "#8b949e", font: { size: 11 }, boxWidth: 20 } },
       tooltip: {
         ...TOOLTIP_STYLE,
         callbacks: {
@@ -1269,7 +1271,7 @@ export default function InvestmentsPage() {
       },
     },
     scales: {
-      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 18 } },
+      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 12 } },
       y: {
         ...AXIS_STYLE,
         ticks: {
