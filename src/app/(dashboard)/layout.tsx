@@ -22,6 +22,7 @@ const navItems = [
   {
     href: "/investments",
     label: "Investimentos",
+    shortLabel: "Invest.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-[20px] h-[20px] shrink-0">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -302,7 +303,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className={`transition-transform duration-150 ${active ? "scale-110" : ""}`}>
                   {item.icon}
                 </span>
-                <span className="leading-none">{item.label}</span>
+                <span className="leading-none">{item.shortLabel ?? item.label}</span>
               </Link>
             );
           })}

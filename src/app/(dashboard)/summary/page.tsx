@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -13,8 +13,9 @@ import {
   Title,
   BarElement,
   BarController,
+  ArcElement,
 } from "chart.js";
-import { Line, Bar } from "react-chartjs-2";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
 import {
   transactionsApi,
   categoriesApi,
@@ -28,7 +29,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 
-ChartJS.register(Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, Title, BarElement, BarController);
+ChartJS.register(Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, Title, BarElement, BarController, ArcElement);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,33 +105,41 @@ export default function SummaryPage() {
   const [selectedTagId,      setSelectedTagId]      = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       setLoading(true);
+      setHistoryTxs([]);
+      setPrevTransactions([]);
       const curr = monthBounds(selectedYear, selectedMonth);
 
-      // Build 5 previous months (newest first: -1, -2, -3, -4, -5)
-      const histBounds = Array.from({ length: 5 }, (_, i) => {
-        const { year: hy, month: hm } = navigateMonth(selectedYear, selectedMonth, -(i + 1));
-        return { bounds: monthBounds(hy, hm), label: MONTHS_SHORT[hm - 1] };
-      });
-
-      const [currTxData, cats, tagList, familyList, ...histResults] = await Promise.all([
+      // Phase 1: current month data only — shows UI fast
+      const [currTxData, cats, tagList, familyList] = await Promise.all([
         transactionsApi.list({ ...curr, page_size: 1000 }),
         categoriesApi.list(),
         tagsApi.list(),
         tagFamiliesApi.list(),
-        ...histBounds.map(h => transactionsApi.list({ ...h.bounds, page_size: 1000 })),
       ]);
-
+      if (cancelled) return;
       setTransactions(currTxData.items);
-      setPrevTransactions(histResults[0].items);  // month -1 for MoM comparison
-      setHistoryTxs(histBounds.map((h, i) => ({ label: h.label, txs: histResults[i].items })));
       setCategories(cats);
       setTags(tagList);
       setFamilies(familyList);
       setLoading(false);
+
+      // Phase 2: load 5 months of history in background (non-blocking)
+      const histBounds = Array.from({ length: 5 }, (_, i) => {
+        const { year: hy, month: hm } = navigateMonth(selectedYear, selectedMonth, -(i + 1));
+        return { bounds: monthBounds(hy, hm), label: MONTHS_SHORT[hm - 1] };
+      });
+      const histResults = await Promise.all(
+        histBounds.map(h => transactionsApi.list({ ...h.bounds, page_size: 1000 }))
+      );
+      if (cancelled) return;
+      setPrevTransactions(histResults[0].items);
+      setHistoryTxs(histBounds.map((h, i) => ({ label: h.label, txs: histResults[i].items })));
     }
     load();
+    return () => { cancelled = true; };
   }, [selectedYear, selectedMonth]);
 
   function prevMonth() {
@@ -287,7 +296,7 @@ export default function SummaryPage() {
       borderColor: categoryBarItems.map(x => x.color),
       borderWidth: 1,
       borderRadius: 4,
-      barThickness: 22,
+      barThickness: 18,
     }],
   };
 
@@ -326,7 +335,7 @@ export default function SummaryPage() {
       borderColor: tagBarItems.map(x => x.color),
       borderWidth: 1,
       borderRadius: 4,
-      barThickness: 22,
+      barThickness: 18,
     }],
   };
 
@@ -539,6 +548,32 @@ export default function SummaryPage() {
     },
   ];
 
+  // ── Donut: gastos por família ──────────────────────────────────────────────
+
+  const donutExpenseData = {
+    labels: familyGroups.map(g => g.familyName),
+    datasets: [{
+      data: familyGroups.map(g => g.outcome),
+      backgroundColor: familyGroups.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]),
+      borderColor: "#0E1218",
+      borderWidth: 2,
+      hoverOffset: 4,
+    }],
+  };
+  const donutExpenseOptions = {
+    cutout: "68%",
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...TOOLTIP_STYLE,
+        callbacks: {
+          label: (ctx: { label: string; parsed: number }) =>
+            ` ${ctx.label}: ${formatCurrency(ctx.parsed, displayCurrency)}`,
+        },
+      },
+    },
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -581,12 +616,12 @@ export default function SummaryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {kpis.map(({ label, value, color, accent, avg, trendUp, goodWhenUp }) => {
+          {kpis.map(({ label, value, color, accent, avg, trendUp, goodWhenUp }, idx) => {
             const isGood   = trendUp === null ? null : (goodWhenUp ? trendUp : !trendUp);
             const trendColor = isGood === null ? "" : isGood ? "text-accent" : "text-danger";
             const trendIcon  = trendUp === null ? null : trendUp ? "▲" : "▼";
             return (
-              <div key={label} className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4`}>
+              <div key={label} className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 ${idx === 4 ? "col-span-2 lg:col-span-1" : ""}`}>
                 <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
                 <p className={`text-xl font-bold font-mono mt-0.5 ${color}`}>{value}</p>
                 {avg && (
@@ -604,38 +639,110 @@ export default function SummaryPage() {
       {/* Main content */}
       {loading ? (
         <div className="space-y-5 animate-pulse">
-          <div className="bg-surface border border-border rounded-xl p-5 h-64" />
-          <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-5">
             <div className="space-y-5">
-              <div className="bg-surface border border-border rounded-xl p-5 h-48" />
+              <div className="bg-surface border border-border rounded-xl p-5 h-52" />
               <div className="bg-surface border border-border rounded-xl p-5 h-48" />
             </div>
             <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-surface border border-border rounded-xl h-14" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="bg-surface border border-border rounded-xl h-16" />
               ))}
             </div>
           </div>
+          <div className="bg-surface border border-border rounded-xl p-5 h-56" />
         </div>
       ) : (
         <>
-        {/* Tendência — full width */}
+        {/* Tendência — full width, primeiro */}
         <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-xs uppercase tracking-wider text-muted mb-4">Tendência — últimos 6 meses</p>
+          <p className="text-xs uppercase tracking-wider text-muted mb-4">Entradas vs Saídas — últimos 6 meses</p>
           {trendMonths.every(m => m.income === 0 && m.outcome === 0) ? (
-            <p className="text-sm text-muted text-center py-10">Sem histórico suficiente.</p>
+            <div className="flex items-center justify-center py-10">
+              <p className="text-sm text-muted">Aguardando histórico...</p>
+            </div>
           ) : (
-            <div style={{ height: 220 }}>
+            <div className="h-[200px] md:h-[240px]">
               <Line data={trendChartData} options={trendOptions} />
             </div>
           )}
         </div>
 
         {/* Grid principal: gráficos (esq) + cards de família (dir) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[55%_45%] gap-5">
 
-          {/* ── Left: categoria + tag empilhados ─────────────────────────── */}
+          {/* ── Left: donut + categoria + tag ─────────────────────────── */}
           <div className="space-y-5">
+
+            {/* Donut: Gastos por Família */}
+            {familyGroups.length > 0 && (
+              <div className="bg-surface border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs uppercase tracking-wider text-muted">Gastos por Família</p>
+                  {selectedFamilyId !== null && (
+                    <button
+                      onClick={() => { setSelectedFamilyId(null); setSelectedCategoryId(null); setSelectedTagId(null); }}
+                      className="text-xs text-muted hover:text-text-primary transition-colors"
+                    >
+                      ✕ limpar filtro
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+                  <div className="relative shrink-0" style={{ width: 144, height: 144 }}>
+                    <Doughnut data={donutExpenseData} options={donutExpenseOptions} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[10px] uppercase tracking-wider text-muted">Total</span>
+                      <span className="text-sm font-bold font-mono text-text-primary mt-0.5">
+                        {formatCurrency(totalOutcome, displayCurrency)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-2.5 min-w-0">
+                    {familyGroups.map((g, i) => {
+                      const pct = totalOutcome > 0 ? (g.outcome / totalOutcome) * 100 : 0;
+                      const color = DONUT_COLORS[i % DONUT_COLORS.length];
+                      const key = g.familyId ?? "__none__";
+                      const isSelected = selectedFamilyId === key;
+                      return (
+                        <div
+                          key={key}
+                          className="cursor-pointer group"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedFamilyId(null); setSelectedCategoryId(null); setSelectedTagId(null);
+                            } else {
+                              setSelectedFamilyId(key); setSelectedCategoryId(null); setSelectedTagId(null);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                              <span className={`text-xs truncate transition-colors ${isSelected ? "text-text-primary font-medium" : "text-text-secondary group-hover:text-text-primary"}`}>
+                                {g.familyName}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] font-mono text-muted">{pct.toFixed(0)}%</span>
+                              <span className="text-xs font-mono font-medium text-text-primary">
+                                {formatCurrency(g.outcome, displayCurrency)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-1 rounded-full bg-surface-3 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${isSelected ? "opacity-100" : "opacity-70 group-hover:opacity-90"}`}
+                              style={{ width: `${pct}%`, background: color }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Por Categoria */}
             {categoryBarItems.length > 0 && (
@@ -650,10 +757,10 @@ export default function SummaryPage() {
                     )}
                   </div>
                   {selectedCategoryId !== null && (
-                    <button onClick={() => { setSelectedCategoryId(null); setSelectedTagId(null); }} className="text-xs text-muted hover:text-text-primary">✕</button>
+                    <button onClick={() => { setSelectedCategoryId(null); setSelectedTagId(null); }} className="text-xs text-muted hover:text-text-primary transition-colors">✕</button>
                   )}
                 </div>
-                <div style={{ height: Math.max(140, categoryBarItems.length * 32 + 40) }}>
+                <div style={{ height: Math.max(120, categoryBarItems.length * 26 + 32) }}>
                   <Bar data={categoryBarChartData} options={categoryBarOptions} />
                 </div>
               </div>
@@ -672,10 +779,10 @@ export default function SummaryPage() {
                     )}
                   </div>
                   {selectedTagId !== null && (
-                    <button onClick={() => setSelectedTagId(null)} className="text-xs text-muted hover:text-text-primary">✕</button>
+                    <button onClick={() => setSelectedTagId(null)} className="text-xs text-muted hover:text-text-primary transition-colors">✕</button>
                   )}
                 </div>
-                <div style={{ height: Math.max(140, tagBarItems.length * 32 + 40) }}>
+                <div style={{ height: Math.max(120, tagBarItems.length * 26 + 32) }}>
                   <Bar data={tagBarChartData} options={tagBarOptions} />
                 </div>
               </div>
@@ -697,6 +804,9 @@ export default function SummaryPage() {
               const variationPct = group.prevOutcome > 0
                 ? ((variation / group.prevOutcome) * 100).toFixed(1)
                 : null;
+              const pctOfTotal   = totalOutcome > 0
+                ? (group.outcome / totalOutcome) * 100
+                : 0;
               const pctOfIncome  = totalIncome > 0
                 ? ((group.outcome / totalIncome) * 100).toFixed(1)
                 : null;
@@ -713,13 +823,13 @@ export default function SummaryPage() {
               return (
                 <div
                   key={key}
-                  className="bg-surface border border-border rounded-xl overflow-hidden transition-shadow"
+                  className="bg-surface border border-border rounded-xl overflow-hidden transition-all"
                   style={{ borderLeft: `${isSelected ? 4 : 3}px solid ${familyColor}` }}
                 >
                   {/* Header: click seleciona, seta expande */}
                   <div
-                    className="flex items-center gap-2 px-4 py-3 border-b border-border cursor-pointer select-none transition-colors hover:bg-surface-3"
-                    style={{ background: isSelected ? familyColor + "18" : "#141A22" }}
+                    className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none transition-colors hover:bg-surface-3"
+                    style={{ background: isSelected ? familyColor + "15" : "#141A22" }}
                     onClick={handleSelectFamily}
                   >
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
@@ -729,45 +839,57 @@ export default function SummaryPage() {
 
                     {isSpike && (
                       <span className="text-[10px] font-semibold text-danger bg-danger/10 border border-danger/20 px-1.5 py-0.5 rounded-full shrink-0">
-                        ⚠ alto
+                        ↑ alto
                       </span>
                     )}
 
+                    {/* % renda — hidden on mobile to prevent overflow */}
                     {pctOfIncome !== null && (
-                      <span className="text-[11px] text-muted bg-surface-3 border border-border px-2 py-0.5 rounded-full shrink-0">
+                      <span className="hidden sm:inline text-[11px] text-muted shrink-0">
                         {pctOfIncome}% renda
                       </span>
                     )}
 
                     {variationPct !== null && (
                       <span className={`text-[11px] font-medium shrink-0 ${variation > 0 ? "text-danger" : "text-accent"}`}>
-                        {variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%
+                        {/* Show only arrow on mobile, arrow+% on sm+ */}
+                        <span className="sm:hidden">{variation > 0 ? "▲" : "▼"}</span>
+                        <span className="hidden sm:inline">{variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%</span>
                       </span>
                     )}
 
                     <span className="text-sm font-mono font-semibold shrink-0" style={{ color: familyColor }}>
-                      -{formatCurrency(group.outcome, displayCurrency)}
+                      {formatCurrency(group.outcome, displayCurrency)}
                     </span>
                     <button
-                      className="text-muted text-xs hover:text-text-primary shrink-0 px-1"
+                      className="text-muted hover:text-text-primary shrink-0 px-1 transition-colors"
                       onClick={(e) => { e.stopPropagation(); toggleFamily(key); }}
                     >
-                      {isExpanded ? "▲" : "▼"}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                        {isExpanded ? <path d="M18 15l-6-6-6 6" /> : <path d="M6 9l6 6 6-6" />}
+                      </svg>
                     </button>
                   </div>
 
+                  {/* Progress bar: % of total expenses */}
+                  {pctOfTotal > 0 && (
+                    <div className="h-0.5 bg-surface-3">
+                      <div className="h-full transition-all duration-500" style={{ width: `${Math.min(100, pctOfTotal)}%`, background: familyColor + "80" }} />
+                    </div>
+                  )}
+
                   {/* Expanded: categories + tag checklist */}
                   {isExpanded && (
-                    <div className="divide-y divide-border">
+                    <div className="divide-y divide-border border-t border-border">
                       {group.categoryBreakdown.map((cat) => {
                         const catTags = tags.filter(
                           (t) => t.category_id === cat.catId && t.is_active && t.type !== "income"
                         );
                         return (
-                          <div key={cat.catId} className="px-4 py-2">
-                            <div className="flex items-center justify-between mb-1.5">
+                          <div key={cat.catId} className="px-4 py-2.5">
+                            <div className="flex items-center justify-between mb-2">
                               <span className="text-xs uppercase tracking-wider text-muted font-medium">{cat.name}</span>
-                              <span className="text-xs font-mono text-text-secondary">-{formatCurrency(cat.value, displayCurrency)}</span>
+                              <span className="text-xs font-mono text-text-secondary">{formatCurrency(cat.value, displayCurrency)}</span>
                             </div>
                             <div className="space-y-1 pl-2">
                               {catTags.map((tag) => {
@@ -778,13 +900,13 @@ export default function SummaryPage() {
                                 return (
                                   <div key={tag.id} className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${paid ? "bg-accent" : "bg-muted opacity-40"}`} />
-                                      <span className={`text-[12px] truncate ${paid ? "text-text-secondary" : "text-muted opacity-60"}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${paid ? "bg-accent" : "bg-border"}`} />
+                                      <span className={`text-[12px] truncate ${paid ? "text-text-secondary" : "text-muted opacity-50"}`}>
                                         {tag.name}
                                       </span>
                                     </div>
                                     <span className={`text-[12px] font-mono flex-shrink-0 ${paid ? "text-text-secondary" : "text-muted opacity-40"}`}>
-                                      {paid ? `-${formatCurrency(tagTotal, displayCurrency)}` : "—"}
+                                      {paid ? formatCurrency(tagTotal, displayCurrency) : "—"}
                                     </span>
                                   </div>
                                 );
@@ -797,12 +919,12 @@ export default function SummaryPage() {
                   )}
 
                   {/* Collapsed: category rows */}
-                  {!isExpanded && (
-                    <div className="divide-y divide-border">
+                  {!isExpanded && group.categoryBreakdown.length > 0 && (
+                    <div className="divide-y divide-border border-t border-border">
                       {group.categoryBreakdown.map((item) => (
                         <div key={item.catId} className="flex items-center justify-between px-4 py-1.5">
                           <span className="text-sm text-muted">{item.name}</span>
-                          <span className="text-sm font-mono text-text-primary">-{formatCurrency(item.value, displayCurrency)}</span>
+                          <span className="text-sm font-mono text-text-secondary">{formatCurrency(item.value, displayCurrency)}</span>
                         </div>
                       ))}
                     </div>
@@ -813,9 +935,10 @@ export default function SummaryPage() {
 
             {/* Entradas card */}
             {totalIncome > 0 && (
-              <div className="bg-surface border border-border rounded-xl overflow-hidden">
+              <div className="bg-surface border border-border border-l-[3px] border-l-accent/60 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3 bg-surface-2 border-b border-border">
-                  <span className="text-sm font-semibold flex-1 text-accent">Entradas</span>
+                  <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                  <span className="text-sm font-semibold flex-1 text-text-primary">Entradas</span>
                   <span className="text-sm font-mono font-semibold text-accent">+{formatCurrency(totalIncome, displayCurrency)}</span>
                 </div>
                 <div className="divide-y divide-border">
@@ -831,69 +954,6 @@ export default function SummaryPage() {
           </div>
         </div>
 
-        {/* Transações filtradas */}
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 bg-surface-2 border-b border-border">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-xs uppercase tracking-wider text-muted">Transações</p>
-              {selectedFamilyId !== null && selectedCategoryId === null && selectedTagId === null && (
-                <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                  {families.find(f => f.id === resolvedSelectedFamilyId)?.name ?? "Sem Família"}
-                </span>
-              )}
-              {selectedCategoryId !== null && selectedTagId === null && (
-                <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                  {categories.find(c => c.id === selectedCategoryId)?.name ?? "—"}
-                </span>
-              )}
-              {selectedTagId !== null && (
-                <span className="text-xs text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                  {tags.find(t => t.id === selectedTagId)?.name ?? "—"}
-                </span>
-              )}
-            </div>
-            <span className="text-xs text-muted">{filteredTxs.length} registros</span>
-          </div>
-
-          {filteredTxs.length === 0 ? (
-            <p className="text-sm text-muted text-center py-8">Nenhuma transação.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    <th className="px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Data</th>
-                    <th className="px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Tag</th>
-                    <th className="px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Categoria</th>
-                    <th className="px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium">Família</th>
-                    <th className="px-4 py-2 text-xs uppercase tracking-wider text-muted font-medium text-right">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredTxs.map(tx => {
-                    const tag = tags.find(t => t.id === tx.tag_id);
-                    const cat = categories.find(c => c.id === tag?.category_id);
-                    const fam = families.find(f => f.id === cat?.family_id);
-                    const isIncome = tag?.type === "income";
-                    const d = new Date(tx.date_transaction);
-                    const dateStr = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
-                    return (
-                      <tr key={tx.id} className="hover:bg-surface-2 transition-colors">
-                        <td className="px-4 py-2 font-mono text-xs text-muted">{dateStr}</td>
-                        <td className="px-4 py-2 text-text-secondary">{tag?.name ?? "—"}</td>
-                        <td className="px-4 py-2 text-text-secondary">{cat?.name ?? "—"}</td>
-                        <td className="px-4 py-2 text-muted">{fam?.name ?? "—"}</td>
-                        <td className={`px-4 py-2 font-mono text-right font-medium ${isIncome ? "text-accent" : "text-danger"}`}>
-                          {isIncome ? "+" : "-"}{formatCurrency(convertToDisplay(tx.value, tx.currency), displayCurrency)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
         </>
       )}
     </div>

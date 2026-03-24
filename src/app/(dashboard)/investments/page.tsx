@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Chart as ChartJS,
   LineElement,
@@ -19,6 +19,7 @@ import {
   tagsApi,
   categoriesApi,
   marketDataApi,
+  adminApi,
   Transaction,
   Tag,
   Category,
@@ -1043,53 +1044,67 @@ export default function InvestmentsPage() {
   const [priceHistory, setPriceHistory] = useState<AssetPriceHistoryItem[]>([]);
   const [cdiRates, setCdiRates] = useState<CdiRateItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<"idle" | "done" | "error">("idle");
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const [txData, tagList, catList, rateHist, priceHist] = await Promise.all([
-        transactionsApi.list({ page_size: 2000 }),
-        tagsApi.list(),
-        categoriesApi.list(),
-        marketDataApi.exchangeRateHistory(),
-        marketDataApi.assetPriceHistory(),
-      ]);
-      setTransactions(txData.items);
-      setTags(tagList);
-      setCategories(catList);
-      setRateHistory(rateHist);
-      setPriceHistory(priceHist);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [txData, tagList, catList, rateHist, priceHist] = await Promise.all([
+      transactionsApi.list({ page_size: 2000 }),
+      tagsApi.list(),
+      categoriesApi.list(),
+      marketDataApi.exchangeRateHistory(),
+      marketDataApi.assetPriceHistory(),
+    ]);
+    setTransactions(txData.items);
+    setTags(tagList);
+    setCategories(catList);
+    setRateHistory(rateHist);
+    setPriceHistory(priceHist);
 
-      // CDI: from earliest transaction to today
-      const allTxs = txData.items.filter((tx) => tx.index);
-      if (allTxs.length > 0) {
-        const earliest = allTxs
-          .map((tx) => tx.date_transaction.slice(0, 10))
-          .sort()[0];
-        const today = new Date().toISOString().slice(0, 10);
-        try {
-          const cdi = await marketDataApi.cdiHistory(earliest, today);
-          setCdiRates(cdi.sort((a, b) => a.date.localeCompare(b.date)));
-        } catch {
-          /* BCB offline - CDI optional */
-        }
+    const allTxs = txData.items.filter((tx) => tx.index);
+    if (allTxs.length > 0) {
+      const earliest = allTxs.map((tx) => tx.date_transaction.slice(0, 10)).sort()[0];
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const cdi = await marketDataApi.cdiHistory(earliest, today);
+        setCdiRates(cdi.sort((a, b) => a.date.localeCompare(b.date)));
+      } catch {
+        /* BCB offline - CDI optional */
       }
-      setLoading(false);
     }
-    load();
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setRefreshStatus("idle");
+    try {
+      await adminApi.runJob("exchange_rates");
+      await adminApi.runJob("asset_prices");
+      await loadData();
+      setRefreshStatus("done");
+      setTimeout(() => setRefreshStatus("idle"), 3000);
+    } catch {
+      setRefreshStatus("error");
+      setTimeout(() => setRefreshStatus("idle"), 3000);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadData]);
 
   const [chartTagFilter, setChartTagFilter] = useState<string[]>([]);
 
-  const investmentTxs = transactions.filter((tx) => tx.symbol || tx.index);
-  const sortedRates = buildSortedRates(rateHistory);
-  const groups = buildGroups(
-    investmentTxs,
-    tags,
-    categories,
-    sortedRates,
-    priceHistory,
-    cdiRates,
+  const investmentTxs = useMemo(
+    () => transactions.filter((tx) => tx.symbol || tx.index),
+    [transactions]
+  );
+  const sortedRates = useMemo(() => buildSortedRates(rateHistory), [rateHistory]);
+  const groups = useMemo(
+    () => buildGroups(investmentTxs, tags, categories, sortedRates, priceHistory, cdiRates),
+    [investmentTxs, tags, categories, sortedRates, priceHistory, cdiRates]
   );
 
   const saldoTotal = groups.reduce((s, g) => s + g.totalCarteira, 0);
@@ -1097,25 +1112,32 @@ export default function InvestmentsPage() {
   const retornoTotal = saldoTotal - totalAporte;
   const retornoPct = totalAporte > 0 ? (retornoTotal / totalAporte) * 100 : 0;
   const latestUsd = sortedRates[sortedRates.length - 1]?.USD ?? null;
+  const activePositions = groups.reduce((s, g) => {
+    if (g.isFixedIncome) return s + g.rows.filter(r => r.carteiraBrl > 0).length;
+    return s + g.rows.filter(r => r.qty > 0).length;
+  }, 0);
 
-  const chartTxs =
-    chartTagFilter.length === 0
-      ? investmentTxs
-      : investmentTxs.filter((tx) => {
-          const tag = tags.find((t) => t.id === tx.tag_id);
-          const cat = categories.find((c) => c.id === tag?.category_id);
-          const groupName = cat?.name ?? tag?.name ?? "—";
-          return chartTagFilter.includes(groupName);
-        });
-
-  const portfolioPoints = buildPortfolioChart(
-    chartTxs,
-    tags,
-    sortedRates,
-    priceHistory,
-    cdiRates,
+  const chartTxs = useMemo(
+    () =>
+      chartTagFilter.length === 0
+        ? investmentTxs
+        : investmentTxs.filter((tx) => {
+            const tag = tags.find((t) => t.id === tx.tag_id);
+            const cat = categories.find((c) => c.id === tag?.category_id);
+            const groupName = cat?.name ?? tag?.name ?? "—";
+            return chartTagFilter.includes(groupName);
+          }),
+    [chartTagFilter, investmentTxs, tags, categories]
   );
-  const monthlyFlow = buildMonthlyFlow(investmentTxs, tags, sortedRates);
+
+  const portfolioPoints = useMemo(
+    () => buildPortfolioChart(chartTxs, tags, sortedRates, priceHistory, cdiRates),
+    [chartTxs, tags, sortedRates, priceHistory, cdiRates]
+  );
+  const monthlyFlow = useMemo(
+    () => buildMonthlyFlow(investmentTxs, tags, sortedRates),
+    [investmentTxs, tags, sortedRates]
+  );
 
   // ── Chart data ────────────────────────────────────────────────────────────
 
@@ -1278,41 +1300,95 @@ export default function InvestmentsPage() {
       </div>
     );
 
-  const currencyLabel = displayCurrency === "BRL" ? "R$" : displayCurrency;
-  const kpis = [
-    { label: "Dólar (BRL)",      value: latestUsd ? fmtDisplay(latestUsd, "BRL") : "—",                              color: "text-text-primary", accent: "border-border",        badge: null },
-    { label: "Saldo Total",      value: fmtDisplay(saldoTotal, "BRL"),                                                color: saldoTotal >= totalAporte ? "text-accent" : "text-danger", accent: saldoTotal >= totalAporte ? "border-accent/40" : "border-danger/40", badge: <RetornoBadge pct={retornoPct} /> },
-    { label: "Valor Investido",  value: fmtDisplay(totalAporte, "BRL"),                                               color: "text-text-primary", accent: "border-primary/40",    badge: null },
-    { label: `Retorno (${currencyLabel})`, value: `${retornoTotal >= 0 ? "+" : ""}${fmtDisplay(retornoTotal, "BRL")}`, color: retornoTotal >= 0 ? "text-accent" : "text-danger", accent: retornoTotal >= 0 ? "border-accent/40" : "border-danger/40", badge: null },
-  ];
-
   return (
     <div className="px-4 md:px-6 py-5 space-y-5">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-lg font-semibold text-text-primary">Investimentos</h1>
-        {saldoTotal > 0 && (
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-text-primary">Investimentos</h1>
           <p className="text-xs text-muted mt-0.5">
-            Carteira atual:{" "}
-            <span className={`font-mono font-semibold ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>
-              {fmtDisplay(saldoTotal, "BRL")}
-            </span>
+            {activePositions > 0 ? `${activePositions} posição${activePositions > 1 ? "ões ativas" : " ativa"} · ` : ""}
+            {groups.length > 0 ? `${groups.length} classe${groups.length > 1 ? "s" : ""}` : ""}
           </p>
-        )}
+        </div>
+        <div className="flex items-center gap-2.5">
+          {/* Botão atualizar preços — útil no mobile quando Fly.io está dormindo */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Atualizar cotações e preços de mercado"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+              refreshStatus === "done"
+                ? "border-accent/40 text-accent bg-accent/10"
+                : refreshStatus === "error"
+                ? "border-danger/40 text-danger bg-danger/10"
+                : "border-border text-muted hover:text-text-primary hover:bg-surface-2 active:scale-95"
+            } disabled:opacity-60 disabled:cursor-not-allowed`}
+          >
+            {refreshing ? (
+              <svg className="animate-spin w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M21 12a9 9 0 11-6.219-8.56" strokeLinecap="round" />
+              </svg>
+            ) : refreshStatus === "done" ? (
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : refreshStatus === "error" ? (
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+              </svg>
+            )}
+            <span className="hidden sm:inline">
+              {refreshing ? "Atualizando..." : refreshStatus === "done" ? "Atualizado!" : refreshStatus === "error" ? "Erro" : "Atualizar"}
+            </span>
+          </button>
+
+          {saldoTotal > 0 && (
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-bold font-mono ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>
+                {fmtDisplay(saldoTotal, "BRL")}
+              </span>
+              <RetornoBadge pct={retornoPct} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── KPIs ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpis.map(({ label, value, color, accent, badge }) => (
-          <div key={label} className={`bg-surface border border-border border-l-2 ${accent} rounded-xl p-4 space-y-1`}>
-            <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className={`text-xl font-bold font-mono ${color}`}>{value}</p>
-              {badge}
-            </div>
+        <div className={`bg-surface border border-border border-l-2 ${saldoTotal >= totalAporte ? "border-l-accent/40" : "border-l-danger/40"} rounded-xl p-4`}>
+          <p className="text-xs uppercase tracking-wider text-muted">Carteira Atual</p>
+          <p className={`text-xl font-bold font-mono mt-0.5 ${saldoTotal >= totalAporte ? "text-accent" : "text-danger"}`}>
+            {fmtDisplay(saldoTotal, "BRL")}
+          </p>
+          <p className="text-[11px] text-muted mt-1">vs. {fmtDisplay(totalAporte, "BRL")} investido</p>
+        </div>
+        <div className="bg-surface border border-border border-l-2 border-l-primary/40 rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-muted">Total Investido</p>
+          <p className="text-xl font-bold font-mono mt-0.5 text-text-primary">{fmtDisplay(totalAporte, "BRL")}</p>
+          <p className="text-[11px] text-muted mt-1">{activePositions} posição{activePositions !== 1 ? "ões" : ""} ativa{activePositions !== 1 ? "s" : ""}</p>
+        </div>
+        <div className={`bg-surface border border-border border-l-2 ${retornoTotal >= 0 ? "border-l-accent/40" : "border-l-danger/40"} rounded-xl p-4`}>
+          <p className="text-xs uppercase tracking-wider text-muted">Retorno</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className={`text-xl font-bold font-mono ${retornoTotal >= 0 ? "text-accent" : "text-danger"}`}>
+              {retornoTotal >= 0 ? "+" : ""}{fmtDisplay(retornoTotal, "BRL")}
+            </p>
+            {totalAporte > 0 && <RetornoBadge pct={retornoPct} />}
           </div>
-        ))}
+        </div>
+        <div className="bg-surface border border-border border-l-2 border-l-border rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wider text-muted">Dólar (BRL)</p>
+          <p className="text-xl font-bold font-mono mt-0.5 text-text-primary">{latestUsd ? fmtDisplay(latestUsd, "BRL") : "—"}</p>
+          <p className="text-[11px] text-muted mt-1">{groups.length} classe{groups.length !== 1 ? "s" : ""} de ativos</p>
+        </div>
       </div>
 
       {investmentTxs.length === 0 ? (
@@ -1378,29 +1454,32 @@ export default function InvestmentsPage() {
 
             {/* Donut — alocação */}
             <div className="bg-surface border border-border rounded-xl p-5">
-              <p className="text-xs uppercase tracking-wider text-muted mb-5">Alocação</p>
+              <p className="text-xs uppercase tracking-wider text-muted mb-4">Alocação</p>
               <div className="flex flex-col items-center gap-5">
-                <div className="relative" style={{ width: 180, height: 180 }}>
+                <div className="relative" style={{ width: 172, height: 172 }}>
                   <Doughnut data={donutData} options={donutOptions} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[10px] uppercase tracking-wider text-muted">Total</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted">Carteira</span>
                     <span className="text-sm font-bold font-mono text-text-primary mt-0.5">{fmtDisplay(saldoTotal, "BRL")}</span>
+                    {totalAporte > 0 && <RetornoBadge pct={retornoPct} />}
                   </div>
                 </div>
-                <div className="w-full space-y-2.5">
+                <div className="w-full space-y-3">
                   {groups.map((g, i) => {
                     const pct = saldoTotal > 0 ? ((g.totalCarteira / saldoTotal) * 100) : 0;
+                    const color = GROUP_COLORS[i % GROUP_COLORS.length];
                     return (
                       <div key={g.tagName}>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: GROUP_COLORS[i % GROUP_COLORS.length] }} />
-                          <span className="text-xs text-muted flex-1 truncate">{g.tagName}</span>
-                          <span className="text-xs font-mono font-medium text-text-primary">{pct.toFixed(1)}%</span>
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                          <span className="text-xs text-text-secondary flex-1 truncate">{g.tagName}</span>
+                          <span className="text-xs font-mono text-muted">{pct.toFixed(1)}%</span>
+                          <span className="text-xs font-mono font-medium text-text-primary">{fmtDisplay(g.totalCarteira, "BRL")}</span>
                         </div>
                         <div className="h-1 rounded-full bg-surface-3 overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: GROUP_COLORS[i % GROUP_COLORS.length] }}
+                            style={{ width: `${pct}%`, background: color }}
                           />
                         </div>
                       </div>
@@ -1425,16 +1504,23 @@ export default function InvestmentsPage() {
 
           {/* ── Tables ────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {groups.map((group, i) => (
-              <div key={group.tagName} className="bg-surface border border-border rounded-xl overflow-hidden">
+            {groups.map((group, i) => {
+              const color = GROUP_COLORS[i % GROUP_COLORS.length];
+              const openCount = group.isFixedIncome
+                ? group.rows.filter(r => r.carteiraBrl > 0).length
+                : group.rows.filter(r => r.qty > 0).length;
+              return (
+              <div key={group.tagName} className="bg-surface border border-border rounded-xl overflow-hidden" style={{ borderLeft: `3px solid ${color}` }}>
                 <div
                   className="flex items-center justify-between px-4 py-3 border-b border-border"
-                  style={{ borderLeft: `3px solid ${GROUP_COLORS[i % GROUP_COLORS.length]}`, background: "#141A22" }}
+                  style={{ background: color + "0D" }}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
                     <span className="text-sm font-semibold text-text-primary truncate">{group.tagName}</span>
+                    <span className="text-xs text-muted shrink-0">{openCount} ativo{openCount !== 1 ? "s" : ""}</span>
                     {group.oldestLastUpdate && (
-                      <span className="text-xs text-muted shrink-0">· {group.oldestLastUpdate.split("-").reverse().join("/")}</span>
+                      <span className="text-xs text-muted shrink-0 hidden sm:inline">· {group.oldestLastUpdate.split("-").reverse().join("/")}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1446,7 +1532,8 @@ export default function InvestmentsPage() {
                 </div>
                 {group.isFixedIncome ? <FixedIncomeTable rows={group.rows} /> : <MarketTable group={group} />}
               </div>
-            ))}
+            );
+          })}
           </div>
         </>
       )}
