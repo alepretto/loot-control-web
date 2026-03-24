@@ -37,7 +37,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setFeedback(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       setFeedback({ type: "error", message: error.message });
       setLoading(false);
@@ -62,7 +65,10 @@ export default function LoginPage() {
     if (error) {
       setFeedback({ type: "error", message: error.message });
     } else {
-      setFeedback({ type: "success", message: "Link enviado! Verifique seu e-mail." });
+      setFeedback({
+        type: "success",
+        message: "Link enviado! Verifique seu e-mail.",
+      });
     }
   }
 
@@ -88,7 +94,11 @@ export default function LoginPage() {
       return;
     }
     if (!data.session) {
-      setFeedback({ type: "success", message: "Cadastro realizado! Verifique seu e-mail para confirmar a conta." });
+      setFeedback({
+        type: "success",
+        message:
+          "Cadastro realizado! Verifique seu e-mail para confirmar a conta.",
+      });
       setLoading(false);
       return;
     }
@@ -96,17 +106,24 @@ export default function LoginPage() {
   }
 
   const headings: Record<Mode, { title: string; sub: string }> = {
-    login:  { title: "Bem-vindo de volta",     sub: "Entre para acessar seu painel" },
-    signup: { title: "Criar sua conta",         sub: "Comece a controlar suas finanças hoje" },
-    forgot: { title: "Recuperar senha",         sub: "Enviaremos um link para o seu e-mail" },
+    login: {
+      title: "Bem-vindo de volta",
+      sub: "Entre para acessar seu painel",
+    },
+    signup: {
+      title: "Criar sua conta",
+      sub: "Comece a controlar suas finanças hoje",
+    },
+    forgot: {
+      title: "Recuperar senha",
+      sub: "Enviaremos um link para o seu e-mail",
+    },
   };
 
   return (
     <div className="min-h-screen flex bg-background">
-
       {/* ── Left Feature Panel ──────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[44%] xl:w-[40%] flex-col bg-surface border-r border-border relative overflow-hidden">
-
         {/* Atmospheric background */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -120,17 +137,25 @@ export default function LoginPage() {
         <div
           className="absolute inset-0 pointer-events-none opacity-[0.035]"
           style={{
-            backgroundImage: "radial-gradient(circle, #e6edf3 1px, transparent 1px)",
+            backgroundImage:
+              "radial-gradient(circle, #e6edf3 1px, transparent 1px)",
             backgroundSize: "28px 28px",
           }}
         />
 
         <div className="relative flex flex-col h-full p-10 xl:p-12">
-
           {/* Logo — ícone pequeno no canto */}
           <div className="flex items-center gap-3">
-            <Image src="/nav-icon.png" alt="Loot Control" width={34} height={34} className="rounded-xl" />
-            <span className="text-base font-semibold text-text-primary tracking-tight">Loot Control</span>
+            <Image
+              src="/nav-icon.png"
+              alt="Loot Control"
+              width={34}
+              height={34}
+              className="rounded-xl"
+            />
+            <span className="text-base font-semibold text-text-primary tracking-tight">
+              Loot Control
+            </span>
           </div>
 
           {/* Main copy */}
@@ -141,30 +166,55 @@ export default function LoginPage() {
                   Controle financeiro pessoal
                 </p>
                 <h1 className="text-3xl xl:text-[2.25rem] font-bold text-text-primary leading-[1.2] tracking-tight">
-                  Suas finanças,<br />
+                  Suas finanças,
+                  <br />
                   <span className="text-primary">sem atrito.</span>
                 </h1>
                 <p className="text-text-secondary mt-4 text-sm leading-relaxed max-w-xs">
-                  Registre gastos, acompanhe investimentos e entenda para onde vai seu dinheiro — simples como uma planilha, poderoso como um app.
+                  Registre gastos, acompanhe investimentos e entenda para onde
+                  vai seu dinheiro — simples como uma planilha, poderoso como um
+                  app.
                 </p>
               </div>
 
               {/* Feature list */}
               <div className="space-y-2.5">
                 {[
-                  { icon: "⚡", label: "Rápido como uma planilha", desc: "Double-click para editar qualquer lançamento" },
-                  { icon: "📊", label: "Resumo mensal automático", desc: "KPIs, gráficos e checklist de gastos por tag" },
-                  { icon: "💼", label: "Investimentos em um lugar", desc: "Cripto, ações, renda fixa e stocks EUA" },
-                  { icon: "🤖", label: "Agente IA integrado", desc: "Registre e consulte pelo chat em linguagem natural" },
+                  {
+                    icon: "⚡",
+                    label: "Rápido como uma planilha",
+                    desc: "Double-click para editar qualquer lançamento",
+                  },
+                  {
+                    icon: "📊",
+                    label: "Resumo mensal automático",
+                    desc: "KPIs, gráficos e checklist de gastos por tag",
+                  },
+                  {
+                    icon: "💼",
+                    label: "Investimentos em um lugar",
+                    desc: "Cripto, ações, renda fixa e stocks EUA",
+                  },
+                  {
+                    icon: "🤖",
+                    label: "Agente IA integrado",
+                    desc: "Registre e consulte pelo chat em linguagem natural",
+                  },
                 ].map((f) => (
                   <div
                     key={f.label}
                     className="flex items-start gap-3 p-3.5 rounded-xl border border-border/50 bg-surface-2/40"
                   >
-                    <span className="text-base leading-none mt-0.5 shrink-0">{f.icon}</span>
+                    <span className="text-base leading-none mt-0.5 shrink-0">
+                      {f.icon}
+                    </span>
                     <div>
-                      <p className="text-[13px] font-medium text-text-primary leading-none mb-1">{f.label}</p>
-                      <p className="text-[11px] text-muted leading-relaxed">{f.desc}</p>
+                      <p className="text-[13px] font-medium text-text-primary leading-none mb-1">
+                        {f.label}
+                      </p>
+                      <p className="text-[11px] text-muted leading-relaxed">
+                        {f.desc}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -174,11 +224,17 @@ export default function LoginPage() {
 
           {/* Footer links */}
           <div className="flex items-center gap-4">
-            <Link href="/demo" className="text-xs text-muted hover:text-text-primary transition-colors">
+            <Link
+              href="/demo"
+              className="text-xs text-muted hover:text-text-primary transition-colors"
+            >
               Ver demonstração →
             </Link>
             <span className="text-border">·</span>
-            <Link href="/" className="text-xs text-muted hover:text-text-primary transition-colors">
+            <Link
+              href="/"
+              className="text-xs text-muted hover:text-text-primary transition-colors"
+            >
               Página inicial
             </Link>
           </div>
@@ -187,18 +243,24 @@ export default function LoginPage() {
 
       {/* ── Right Form Panel ────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
-
         {/* Mobile-only background */}
         <div className="absolute -top-48 -right-24 w-[450px] h-[450px] bg-primary/4 rounded-full blur-3xl pointer-events-none lg:hidden" />
 
         <div className="w-full max-w-[360px] relative">
-
           {/* Back link */}
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-text-primary transition-colors mb-8"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-3.5 h-3.5"
+            >
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
             Voltar ao início
@@ -208,7 +270,14 @@ export default function LoginPage() {
           <div className="flex justify-center mb-8">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/10 rounded-2xl blur-xl scale-110 pointer-events-none" />
-              <Image src="/logo.png" alt="Loot Control" width={140} height={140} className="relative rounded-2xl" priority />
+              <Image
+                src="/logo.png"
+                alt="Loot Control"
+                width={240}
+                height={240}
+                className="relative rounded-2xl"
+                priority
+              />
             </div>
           </div>
 
@@ -217,18 +286,18 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold text-text-primary tracking-tight">
               {headings[mode].title}
             </h2>
-            <p className="text-sm text-muted mt-1.5">
-              {headings[mode].sub}
-            </p>
+            <p className="text-sm text-muted mt-1.5">{headings[mode].sub}</p>
           </div>
 
           {/* Feedback */}
           {feedback && (
-            <div className={`mb-5 text-xs rounded-xl px-4 py-3 border ${
-              feedback.type === "error"
-                ? "text-danger bg-danger/8 border-danger/20"
-                : "text-accent bg-accent/8 border-accent/20"
-            }`}>
+            <div
+              className={`mb-5 text-xs rounded-xl px-4 py-3 border ${
+                feedback.type === "error"
+                  ? "text-danger bg-danger/8 border-danger/20"
+                  : "text-accent bg-accent/8 border-accent/20"
+              }`}
+            >
               {feedback.message}
             </div>
           )}
@@ -258,7 +327,11 @@ export default function LoginPage() {
                 />
               </Field>
               <div className="pt-1">
-                <PrimaryButton loading={loading} label="Entrar" loadingLabel="Entrando..." />
+                <PrimaryButton
+                  loading={loading}
+                  label="Entrar"
+                  loadingLabel="Entrando..."
+                />
               </div>
               <div className="flex items-center justify-between pt-1">
                 <button
@@ -350,7 +423,11 @@ export default function LoginPage() {
                 />
               </Field>
               <div className="pt-1">
-                <PrimaryButton loading={loading} label="Criar conta" loadingLabel="Criando..." />
+                <PrimaryButton
+                  loading={loading}
+                  label="Criar conta"
+                  loadingLabel="Criando..."
+                />
               </div>
               <p className="text-center text-xs text-muted pt-1">
                 Já tem conta?{" "}
@@ -380,7 +457,11 @@ export default function LoginPage() {
                 />
               </Field>
               <div className="pt-1">
-                <PrimaryButton loading={loading} label="Enviar link" loadingLabel="Enviando..." />
+                <PrimaryButton
+                  loading={loading}
+                  label="Enviar link"
+                  loadingLabel="Enviando..."
+                />
               </div>
               <p className="text-center text-xs text-muted pt-1">
                 <button
@@ -405,7 +486,13 @@ const inputClass =
   "w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-muted " +
   "focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="block text-[11px] text-muted uppercase tracking-[0.12em] font-semibold mb-2">
@@ -416,7 +503,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function PrimaryButton({ loading, label, loadingLabel }: { loading: boolean; label: string; loadingLabel: string }) {
+function PrimaryButton({
+  loading,
+  label,
+  loadingLabel,
+}: {
+  loading: boolean;
+  label: string;
+  loadingLabel: string;
+}) {
   return (
     <button
       type="submit"
@@ -428,7 +523,9 @@ function PrimaryButton({ loading, label, loadingLabel }: { loading: boolean; lab
           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           {loadingLabel}
         </>
-      ) : label}
+      ) : (
+        label
+      )}
     </button>
   );
 }
