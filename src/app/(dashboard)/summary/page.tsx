@@ -850,46 +850,51 @@ export default function SummaryPage() {
                   className="bg-surface border border-border rounded-xl overflow-hidden transition-all"
                   style={{ borderLeft: `${isSelected ? 4 : 3}px solid ${familyColor}` }}
                 >
-                  {/* Header: click seleciona, seta expande */}
+                  {/* Header: zona esquerda filtra, zona direita expande */}
                   <div
-                    className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none transition-colors hover:bg-surface-3"
+                    className="flex items-center select-none transition-colors"
                     style={{ background: isSelected ? familyColor + "15" : "#141A22" }}
-                    onClick={handleSelectFamily}
                   >
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
-                    <span className="text-sm font-semibold text-text-primary flex-1 truncate">
-                      {group.familyName}
-                    </span>
-
-                    {isSpike && (
-                      <span className="text-[10px] font-semibold text-danger bg-danger/10 border border-danger/20 px-1.5 py-0.5 rounded-full shrink-0">
-                        ↑ alto
-                      </span>
-                    )}
-
-                    {/* % renda — hidden on mobile to prevent overflow */}
-                    {pctOfIncome !== null && (
-                      <span className="hidden sm:inline text-[11px] text-muted shrink-0">
-                        {pctOfIncome}% renda
-                      </span>
-                    )}
-
-                    {variationPct !== null && (
-                      <span className={`text-[11px] font-medium shrink-0 ${variation > 0 ? "text-danger" : "text-accent"}`}>
-                        {/* Show only arrow on mobile, arrow+% on sm+ */}
-                        <span className="sm:hidden">{variation > 0 ? "▲" : "▼"}</span>
-                        <span className="hidden sm:inline">{variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%</span>
-                      </span>
-                    )}
-
-                    <span className="text-sm font-mono font-semibold shrink-0" style={{ color: familyColor }}>
-                      {formatCurrency(group.outcome, displayCurrency)}
-                    </span>
-                    <button
-                      className="text-muted hover:text-text-primary shrink-0 px-1 transition-colors"
-                      onClick={(e) => { e.stopPropagation(); toggleFamily(key); }}
+                    {/* Zona esquerda — clique filtra */}
+                    <div
+                      className="flex items-center gap-2 flex-1 min-w-0 px-4 py-3 cursor-pointer hover:bg-surface-3/50 transition-colors"
+                      onClick={handleSelectFamily}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
+                      <span className="text-sm font-semibold text-text-primary flex-1 truncate">
+                        {group.familyName}
+                      </span>
+
+                      {isSpike && (
+                        <span className="text-[10px] font-semibold text-danger bg-danger/10 border border-danger/20 px-1.5 py-0.5 rounded-full shrink-0">
+                          ↑ alto
+                        </span>
+                      )}
+
+                      {/* % renda — hidden on mobile to prevent overflow */}
+                      {pctOfIncome !== null && (
+                        <span className="hidden sm:inline text-[11px] text-muted shrink-0">
+                          {pctOfIncome}% renda
+                        </span>
+                      )}
+
+                      {variationPct !== null && (
+                        <span className={`text-[11px] font-medium shrink-0 ${variation > 0 ? "text-danger" : "text-accent"}`}>
+                          <span className="sm:hidden">{variation > 0 ? "▲" : "▼"}</span>
+                          <span className="hidden sm:inline">{variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Zona direita — clique expande (alvo grande) */}
+                    <button
+                      className="flex items-center gap-2 px-4 py-3 shrink-0 cursor-pointer hover:bg-surface-3/50 transition-colors border-l border-border/40"
+                      onClick={() => toggleFamily(key)}
+                    >
+                      <span className="text-sm font-mono font-semibold" style={{ color: familyColor }}>
+                        {formatCurrency(group.outcome, displayCurrency)}
+                      </span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted shrink-0">
                         {isExpanded ? <path d="M18 15l-6-6-6 6" /> : <path d="M6 9l6 6 6-6" />}
                       </svg>
                     </button>
