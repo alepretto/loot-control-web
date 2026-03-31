@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Transaction, Category, Tag, TagFamily, transactionsApi } from "@/lib/api";
+import { Transaction, Category, Tag, TagFamily, PaymentMethod, transactionsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -10,6 +10,7 @@ interface Props {
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
+  paymentMethods?: PaymentMethod[];
   grouped?: boolean; // true = in a date group (shows time only, not full date)
   onUpdated: () => void;
   onDeleted: () => void;
@@ -40,7 +41,7 @@ function localDate(dateStr: string, tz: string) {
 export const TX_GRID = "grid-cols-[72px_1fr_1fr_152px_56px_60px_72px]";
 
 export function TransactionRow({
-  transaction, families, categories, tags,
+  transaction, families, categories, tags, paymentMethods = [],
   grouped = false, onUpdated, onDeleted, onEditRequest,
 }: Props) {
   const { timezone, displayCurrency, fmtDisplay } = useSettings();
@@ -82,6 +83,7 @@ export function TransactionRow({
         date_transaction: draft.date_transaction,
         value: draft.value,
         currency: draft.currency,
+        payment_method_id: draft.payment_method_id ?? null,
         quantity: draft.quantity ?? undefined,
         symbol: draft.symbol ?? undefined,
         index_rate: draft.index_rate ?? undefined,
@@ -140,6 +142,16 @@ export function TransactionRow({
             className={inputCls} style={{ width: 72 }}>
             {["BRL", "USD", "EUR"].map(c => <option key={c}>{c}</option>)}
           </select>
+          {paymentMethods.filter(pm => pm.is_active).length > 0 && (
+            <select value={draft.payment_method_id ?? ""}
+              onChange={e => setDraft({ ...draft, payment_method_id: e.target.value || null })}
+              className={inputCls} style={{ width: 130 }}>
+              <option value="">Sem método</option>
+              {paymentMethods.filter(pm => pm.is_active).map(pm => (
+                <option key={pm.id} value={pm.id}>{pm.name}</option>
+              ))}
+            </select>
+          )}
           <input type="text" placeholder="Symbol" value={draft.symbol ?? ""}
             onChange={e => setDraft({ ...draft, symbol: e.target.value || null })}
             className={inputCls} style={{ width: 72 }} />

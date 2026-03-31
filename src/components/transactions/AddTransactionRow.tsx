@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Category, Tag, TagFamily, transactionsApi, CategoryType, Currency } from "@/lib/api";
+import { Category, Tag, TagFamily, PaymentMethod, transactionsApi, CategoryType, Currency } from "@/lib/api";
 
 interface Props {
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
+  paymentMethods: PaymentMethod[];
   onCreated: () => void;
 }
 
@@ -34,6 +35,7 @@ function makeEmpty() {
     tag_id: "",
     value: "",
     currency: "BRL" as Currency,
+    payment_method_id: "",
     quantity: "",
     symbol: "",
     index_rate: "",
@@ -41,7 +43,7 @@ function makeEmpty() {
   };
 }
 
-export function AddTransactionRow({ families, categories, tags, onCreated }: Props) {
+export function AddTransactionRow({ families, categories, tags, paymentMethods, onCreated }: Props) {
   const [form, setForm] = useState(makeEmpty);
   const [saving, setSaving] = useState(false);
 
@@ -64,6 +66,7 @@ export function AddTransactionRow({ families, categories, tags, onCreated }: Pro
         date_transaction: new Date(form.date_transaction).toISOString(),
         value: parseFloat(form.value),
         currency: form.currency,
+        payment_method_id: form.payment_method_id || null,
         quantity: form.quantity ? parseFloat(form.quantity) : undefined,
         symbol: form.symbol || undefined,
         index_rate: form.index_rate ? parseFloat(form.index_rate) : undefined,
@@ -161,6 +164,19 @@ export function AddTransactionRow({ families, categories, tags, onCreated }: Pro
           <option>USD</option>
           <option>EUR</option>
         </select>
+        {paymentMethods.filter((pm) => pm.is_active).length > 0 && (
+          <select
+            value={form.payment_method_id}
+            onChange={(e) => setForm({ ...form, payment_method_id: e.target.value })}
+            className={inputCls}
+            style={{ width: 130 }}
+          >
+            <option value="">Pagamento</option>
+            {paymentMethods.filter((pm) => pm.is_active).map((pm) => (
+              <option key={pm.id} value={pm.id}>{pm.name}</option>
+            ))}
+          </select>
+        )}
         <input
           type="text"
           placeholder="Symbol"

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Category, Currency, PaginatedTransactions, Tag, TagFamily, Transaction,
-  categoriesApi, tagsApi, tagFamiliesApi, transactionsApi,
+  Category, Currency, PaginatedTransactions, Tag, TagFamily, Transaction, PaymentMethod,
+  categoriesApi, tagsApi, tagFamiliesApi, transactionsApi, paymentMethodsApi,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -166,6 +166,7 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [families, setFamilies] = useState<TagFamily[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [page, setPage] = useState(1);
   const [showImport, setShowImport] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -177,7 +178,7 @@ export default function TransactionsPage() {
   });
 
   const load = useCallback(async () => {
-    const [txData, cats, tagList, familyList] = await Promise.all([
+    const [txData, cats, tagList, familyList, pmList] = await Promise.all([
       transactionsApi.list({
         page, page_size: 20,
         currency: (filters.currency as Currency) || undefined,
@@ -190,8 +191,9 @@ export default function TransactionsPage() {
       categoriesApi.list(),
       tagsApi.list(),
       tagFamiliesApi.list(),
+      paymentMethodsApi.list(),
     ]);
-    setData(txData); setCategories(cats); setTags(tagList); setFamilies(familyList);
+    setData(txData); setCategories(cats); setTags(tagList); setFamilies(familyList); setPaymentMethods(pmList);
   }, [page, filters]);
 
   useEffect(() => { load(); }, [load]);
@@ -309,7 +311,7 @@ export default function TransactionsPage() {
       <div className="flex-1 overflow-auto">
         {/* Desktop: add row */}
         <div className="hidden md:block px-6 pt-4 pb-2 max-w-7xl mx-auto">
-          <AddTransactionRow families={families} categories={categories} tags={tags} onCreated={load} />
+          <AddTransactionRow families={families} categories={categories} tags={tags} paymentMethods={paymentMethods} onCreated={load} />
         </div>
 
         {/* Desktop: column header */}
@@ -369,6 +371,7 @@ export default function TransactionsPage() {
                     families={families}
                     categories={categories}
                     tags={tags}
+                    paymentMethods={paymentMethods}
                     grouped
                     onUpdated={load}
                     onDeleted={load}
@@ -409,14 +412,14 @@ export default function TransactionsPage() {
 
       {/* ── Modals / Sheets ───────────────────────────────────────────────── */}
       <AddTransactionModal
-        families={families} categories={categories} tags={tags}
+        families={families} categories={categories} tags={tags} paymentMethods={paymentMethods}
         open={showAddModal} onClose={() => setShowAddModal(false)} onCreated={load}
       />
 
       {editingTx && (
         <EditTransactionModal
           transaction={editingTx}
-          families={families} categories={categories} tags={tags}
+          families={families} categories={categories} tags={tags} paymentMethods={paymentMethods}
           open={!!editingTx}
           onClose={() => setEditingTx(null)}
           onUpdated={() => { load(); setEditingTx(null); }}
