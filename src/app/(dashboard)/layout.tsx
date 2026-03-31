@@ -51,6 +51,16 @@ const navItems = [
     ),
   },
   {
+    href: "/payment-methods",
+    label: "Pagamentos",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="w-[20px] h-[20px] shrink-0">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+        <line x1="1" y1="10" x2="23" y2="10" />
+      </svg>
+    ),
+  },
+  {
     href: "/chat",
     label: "Assistente",
     icon: (
@@ -290,7 +300,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         <div className="flex">
-          {navItems.filter(item => item.href !== "/chat").map((item) => {
+          {navItems.filter(item => item.href !== "/chat" && item.href !== "/payment-methods").map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link

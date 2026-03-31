@@ -86,6 +86,7 @@ export interface Transaction {
   date_transaction: string;
   value: number;
   currency: Currency;
+  payment_method_id: string | null;
   quantity: number | null;
   symbol: string | null;
   index_rate: number | null;
@@ -93,6 +94,32 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
 }
+
+// ─── Payment Methods ──────────────────────────────────────────────────────────
+export type PaymentMethodCategory = "money" | "benefit";
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  name: string;
+  category: PaymentMethodCategory;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const paymentMethodsApi = {
+  list: (params?: { is_active?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.is_active !== undefined) q.set("is_active", String(params.is_active));
+    return request<PaymentMethod[]>(`/finance/payment-methods/?${q}`);
+  },
+  create: (data: { name: string; category: PaymentMethodCategory }) =>
+    request<PaymentMethod>("/finance/payment-methods/", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<{ name: string; category: PaymentMethodCategory; is_active: boolean }>) =>
+    request<PaymentMethod>(`/finance/payment-methods/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string) => request<void>(`/finance/payment-methods/${id}`, { method: "DELETE" }),
+};
 
 export interface PaginatedTransactions {
   items: Transaction[];
@@ -186,6 +213,7 @@ export const transactionsApi = {
     date_transaction: string;
     value: number;
     currency: Currency;
+    payment_method_id?: string | null;
     quantity?: number;
     symbol?: string;
     index_rate?: number;

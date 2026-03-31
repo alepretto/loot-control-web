@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Category, Tag, TagFamily, transactionsApi, CategoryType, Currency } from "@/lib/api";
+import { Category, Tag, TagFamily, PaymentMethod, transactionsApi, CategoryType, Currency } from "@/lib/api";
 
 interface Props {
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
+  paymentMethods: PaymentMethod[];
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
@@ -36,6 +37,7 @@ function makeEmpty() {
     tag_id: "",
     value: "",
     currency: "BRL" as Currency,
+    payment_method_id: "",
     quantity: "",
     symbol: "",
     index_rate: "",
@@ -43,7 +45,7 @@ function makeEmpty() {
   };
 }
 
-export function AddTransactionModal({ families, categories, tags, open, onClose, onCreated }: Props) {
+export function AddTransactionModal({ families, categories, tags, paymentMethods, open, onClose, onCreated }: Props) {
   const [form, setForm] = useState(makeEmpty);
   const [saving, setSaving] = useState(false);
   const [showInvestment, setShowInvestment] = useState(false);
@@ -85,6 +87,7 @@ export function AddTransactionModal({ families, categories, tags, open, onClose,
         date_transaction: new Date(form.date_transaction).toISOString(),
         value: parseFloat(form.value),
         currency: form.currency,
+        payment_method_id: form.payment_method_id || null,
         quantity: form.quantity ? parseFloat(form.quantity) : undefined,
         symbol: form.symbol || undefined,
         index_rate: form.index_rate ? parseFloat(form.index_rate) : undefined,
@@ -246,6 +249,23 @@ export function AddTransactionModal({ families, categories, tags, open, onClose,
                 </div>
               </div>
             </div>
+
+            {/* Método de Pagamento */}
+            {paymentMethods.filter((pm) => pm.is_active).length > 0 && (
+              <div>
+                <label className="block text-[10px] text-text-secondary uppercase tracking-wider font-semibold mb-2">Método de Pagamento</label>
+                <select
+                  value={form.payment_method_id}
+                  onChange={(e) => setForm({ ...form, payment_method_id: e.target.value })}
+                  className={selectCls}
+                >
+                  <option value="">Não informado</option>
+                  {paymentMethods.filter((pm) => pm.is_active).map((pm) => (
+                    <option key={pm.id} value={pm.id}>{pm.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Investimento toggle */}
             <button

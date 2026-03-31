@@ -1143,6 +1143,25 @@ export default function InvestmentsPage() {
     [investmentTxs, tags, sortedRates]
   );
 
+  // ── TWR: accumulated return % and daily return %, excluding cash flows ──────
+  const { twrPoints, dailyReturns } = useMemo(() => {
+    if (!portfolioPoints || portfolioPoints.length < 2)
+      return { twrPoints: [] as { date: string; twr: number }[], dailyReturns: [] as { date: string; ret: number }[] };
+    const twrPoints: { date: string; twr: number }[] = [{ date: portfolioPoints[0].date, twr: 0 }];
+    const dailyReturns: { date: string; ret: number }[] = [];
+    let factor = 1;
+    for (let i = 1; i < portfolioPoints.length; i++) {
+      const prev = portfolioPoints[i - 1];
+      const curr = portfolioPoints[i];
+      const cf = curr.invested - prev.invested;
+      const r = prev.value > 0 ? (curr.value - prev.value - cf) / prev.value : 0;
+      factor *= 1 + r;
+      twrPoints.push({ date: curr.date, twr: (factor - 1) * 100 });
+      dailyReturns.push({ date: curr.date, ret: r * 100 });
+    }
+    return { twrPoints, dailyReturns };
+  }, [portfolioPoints]);
+
   // ── Chart data ────────────────────────────────────────────────────────────
 
   const lineData =
@@ -1280,6 +1299,87 @@ export default function InvestmentsPage() {
           ...AXIS_STYLE.ticks,
           callback: (v: number | string) =>
             `R$${(Number(v) / 1000).toFixed(0)}k`,
+        },
+      },
+    },
+  };
+
+  const lastTwr = twrPoints[twrPoints.length - 1]?.twr ?? 0;
+  const twrColor = lastTwr >= 0 ? "#22c55e" : "#ef4444";
+  const twrLineData = twrPoints.length > 1 ? {
+    labels: twrPoints.map(p => { const [y, m, d] = p.date.split("-"); return `${d}/${m}/${y.slice(2)}`; }),
+    datasets: [{
+      label: "Rentabilidade Acumulada",
+      data: twrPoints.map(p => p.twr),
+      borderColor: twrColor,
+      backgroundColor: lastTwr >= 0 ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
+      fill: "origin" as const,
+      tension: 0.3,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointBackgroundColor: twrColor,
+      borderWidth: 2,
+    }],
+  } : null;
+
+  const twrOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...TOOLTIP_STYLE,
+        mode: "index" as const,
+        intersect: false,
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            ` ${ctx.dataset.label ?? ""}: ${(ctx.parsed.y ?? 0) >= 0 ? "+" : ""}${(ctx.parsed.y ?? 0).toFixed(2)}%`,
+        },
+      },
+    },
+    hover: { mode: "index" as const, intersect: false },
+    scales: {
+      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 6 } },
+      y: {
+        ...AXIS_STYLE,
+        ticks: {
+          ...AXIS_STYLE.ticks,
+          callback: (v: number | string) => `${Number(v) >= 0 ? "+" : ""}${Number(v).toFixed(1)}%`,
+        },
+      },
+    },
+  };
+
+  const dailyReturnBarData = dailyReturns.length > 0 ? {
+    labels: dailyReturns.map(p => { const [y, m, d] = p.date.split("-"); return `${d}/${m}/${y.slice(2)}`; }),
+    datasets: [{
+      label: "Retorno Diário",
+      data: dailyReturns.map(p => p.ret),
+      backgroundColor: dailyReturns.map(p => p.ret >= 0 ? "rgba(34,197,94,0.75)" : "rgba(239,68,68,0.65)"),
+      borderRadius: 2,
+    }],
+  } : null;
+
+  const dailyReturnOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...TOOLTIP_STYLE,
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            ` Retorno: ${(ctx.parsed.y ?? 0) >= 0 ? "+" : ""}${(ctx.parsed.y ?? 0).toFixed(3)}%`,
+        },
+      },
+    },
+    scales: {
+      x: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, maxTicksLimit: 8 } },
+      y: {
+        ...AXIS_STYLE,
+        ticks: {
+          ...AXIS_STYLE.ticks,
+          callback: (v: number | string) => `${Number(v).toFixed(2)}%`,
         },
       },
     },
@@ -1510,6 +1610,45 @@ export default function InvestmentsPage() {
               </div>
             </div>
           </div>
+
+          {/* ── Rentabilidade Acumulada + Retorno Diário ──────────────────── */}
+          {(twrLineData || dailyReturnBarData) && (
+            <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-5">
+
+              {/* Rentabilidade Acumulada (TWR) */}
+              {twrLineData && (
+                <div className="bg-surface border border-border rounded-xl p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted">Rentabilidade Acumulada</p>
+                      <p className="text-[11px] text-muted mt-0.5">Retorno real excluindo aportes (TWR)</p>
+                    </div>
+                    {twrPoints.length > 0 && (
+                      <span className={`text-sm font-mono font-bold ${lastTwr >= 0 ? "text-accent" : "text-danger"}`}>
+                        {lastTwr >= 0 ? "+" : ""}{lastTwr.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-[200px] md:h-[240px]">
+                    <Line data={twrLineData} options={twrOptions} />
+                  </div>
+                </div>
+              )}
+
+              {/* Retorno Diário */}
+              {dailyReturnBarData && (
+                <div className="bg-surface border border-border rounded-xl p-5">
+                  <div className="mb-4">
+                    <p className="text-xs uppercase tracking-wider text-muted">Retorno Diário</p>
+                    <p className="text-[11px] text-muted mt-0.5">Variação diária excluindo aportes</p>
+                  </div>
+                  <div className="h-[200px] md:h-[240px]">
+                    <Bar data={dailyReturnBarData} options={dailyReturnOptions} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Bar: aportes vs resgates ──────────────────────────────────── */}
           <div className="bg-surface border border-border rounded-xl p-5">

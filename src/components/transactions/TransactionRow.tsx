@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Transaction, Category, Tag, TagFamily, transactionsApi } from "@/lib/api";
+import { Transaction, Category, Tag, TagFamily, PaymentMethod, transactionsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 
@@ -10,6 +10,7 @@ interface Props {
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
+  paymentMethods?: PaymentMethod[];
   grouped?: boolean; // true = in a date group (shows time only, not full date)
   onUpdated: () => void;
   onDeleted: () => void;
@@ -36,8 +37,11 @@ function localDate(dateStr: string, tz: string) {
   return `${day} ${MONTHS_PT[month]}`;
 }
 
+// Desktop grid column template — shared with the header in page.tsx
+export const TX_GRID = "grid-cols-[72px_1fr_1fr_152px_56px_60px_72px]";
+
 export function TransactionRow({
-  transaction, families, categories, tags,
+  transaction, families, categories, tags, paymentMethods = [],
   grouped = false, onUpdated, onDeleted, onEditRequest,
 }: Props) {
   const { timezone, displayCurrency, fmtDisplay } = useSettings();
@@ -54,12 +58,12 @@ export function TransactionRow({
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const tag = tags.find(t => t.id === transaction.tag_id);
+  const tag      = tags.find(t => t.id === transaction.tag_id);
   const category = categories.find(c => c.id === tag?.category_id);
-  const family = families.find(f => f.id === category?.family_id);
+  const family   = families.find(f => f.id === category?.family_id);
   const isIncome = tag?.type === "income";
 
-  const [draftFamilyId, setDraftFamilyId] = useState(family?.id ?? "");
+  const [draftFamilyId,   setDraftFamilyId]   = useState(family?.id ?? "");
   const [draftCategoryId, setDraftCategoryId] = useState(category?.id ?? "");
 
   const editCategories = draftFamilyId
@@ -79,6 +83,7 @@ export function TransactionRow({
         date_transaction: draft.date_transaction,
         value: draft.value,
         currency: draft.currency,
+        payment_method_id: draft.payment_method_id ?? null,
         quantity: draft.quantity ?? undefined,
         symbol: draft.symbol ?? undefined,
         index_rate: draft.index_rate ?? undefined,
@@ -137,6 +142,16 @@ export function TransactionRow({
             className={inputCls} style={{ width: 72 }}>
             {["BRL", "USD", "EUR"].map(c => <option key={c}>{c}</option>)}
           </select>
+          {paymentMethods.filter(pm => pm.is_active).length > 0 && (
+            <select value={draft.payment_method_id ?? ""}
+              onChange={e => setDraft({ ...draft, payment_method_id: e.target.value || null })}
+              className={inputCls} style={{ width: 130 }}>
+              <option value="">Sem método</option>
+              {paymentMethods.filter(pm => pm.is_active).map(pm => (
+                <option key={pm.id} value={pm.id}>{pm.name}</option>
+              ))}
+            </select>
+          )}
           <input type="text" placeholder="Symbol" value={draft.symbol ?? ""}
             onChange={e => setDraft({ ...draft, symbol: e.target.value || null })}
             className={inputCls} style={{ width: 72 }} />
@@ -164,52 +179,119 @@ export function TransactionRow({
     );
   }
 
-  // ── View mode ───────────────────────────────────────────────────────────────
+  // ── Shared derived values ───────────────────────────────────────────────────
   const breadcrumb = [family?.name, category?.name].filter(Boolean).join(" · ");
-  const timeStr = grouped ? localTime(transaction.date_transaction, timezone) : localDate(transaction.date_transaction, timezone);
+  const timeStr    = grouped
+    ? localTime(transaction.date_transaction, timezone)
+    : localDate(transaction.date_transaction, timezone);
 
+  // Value always shown in the transaction's own currency (never "R$ USD")
+  const nativeValue = `${isIncome ? "+" : ""}${formatCurrency(transaction.value, transaction.currency)}`;
+  // Converted value shown as secondary when displayCurrency differs
+  const convertedValue = transaction.currency !== displayCurrency
+    ? `≈ ${fmtDisplay(transaction.value, transaction.currency)}`
+    : null;
+
+  const investBadge = transaction.symbol
+    ? `${transaction.symbol}${transaction.quantity != null ? ` · ${transaction.quantity}` : ""}`
+    : transaction.index
+    ? `${transaction.index}${transaction.index_rate != null ? ` ${transaction.index_rate}%` : ""}`
+    : null;
+
+  // ── Mobile layout ───────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div
+        onClick={handleRowClick}
+        className="flex items-center gap-3 px-4 py-3 border-b border-border/60 active:bg-surface-2 transition-colors cursor-pointer"
+      >
+        <span className={`shrink-0 w-2 h-2 rounded-full ${isIncome ? "bg-accent" : "bg-danger"}`} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-primary truncate">{tag?.name ?? "—"}</span>
+            {investBadge && (
+              <span className="shrink-0 text-[10px] font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
+                {investBadge}
+              </span>
+            )}
+          </div>
+          {breadcrumb && (
+            <div className="text-xs text-muted mt-0.5 truncate">{breadcrumb}</div>
+          )}
+        </div>
+
+        <div className="text-right shrink-0">
+          <div className={`text-sm font-mono font-semibold tabular-nums ${isIncome ? "text-accent" : "text-text-primary"}`}>
+            {nativeValue}
+          </div>
+          {convertedValue && (
+            <div className="text-[10px] font-mono text-muted tabular-nums">{convertedValue}</div>
+          )}
+          <div className="text-[10px] font-mono text-muted mt-0.5">{timeStr}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout (grid) ───────────────────────────────────────────────────
   return (
     <div
-      onDoubleClick={() => !isMobile && setEditing(true)}
-      onClick={handleRowClick}
-      className={`group flex items-center gap-3 px-4 py-3 border-b border-border/60 hover:bg-surface-2/60 transition-colors ${isMobile ? "cursor-pointer active:bg-surface-2" : "cursor-default"}`}
+      onDoubleClick={() => setEditing(true)}
+      className={`group grid ${TX_GRID} items-center border-b border-border/60 hover:bg-surface-2/60 transition-colors cursor-default`}
     >
-      {/* Type indicator */}
-      <span className={`shrink-0 w-2 h-2 rounded-full ${isIncome ? "bg-accent" : "bg-danger"}`} />
+      {/* Type badge */}
+      <div className="flex justify-center px-2">
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+          isIncome
+            ? "bg-accent/10 text-accent border-accent/20"
+            : "bg-danger/10 text-danger border-danger/20"
+        }`}>
+          {isIncome ? "Entrada" : "Saída"}
+        </span>
+      </div>
 
-      {/* Main info */}
-      <div className="flex-1 min-w-0">
+      {/* Tag name + invest badge */}
+      <div className="min-w-0 py-2.5 pr-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-primary truncate">{tag?.name ?? "—"}</span>
-          {transaction.symbol && (
+          <span className="text-sm text-text-primary truncate">{tag?.name ?? "—"}</span>
+          {investBadge && (
             <span className="shrink-0 text-[10px] font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
-              {transaction.symbol}{transaction.quantity != null ? ` · ${transaction.quantity}` : ""}
-            </span>
-          )}
-          {!transaction.symbol && transaction.index && (
-            <span className="shrink-0 text-[10px] font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
-              {transaction.index}{transaction.index_rate != null ? ` ${transaction.index_rate}%` : ""}
+              {investBadge}
             </span>
           )}
         </div>
-        {breadcrumb && (
-          <div className="text-xs text-muted mt-0.5 truncate">{breadcrumb}</div>
+      </div>
+
+      {/* Family · Category */}
+      <div className="min-w-0 py-2.5 pr-3">
+        <span className="text-xs text-muted truncate block">{breadcrumb || "—"}</span>
+      </div>
+
+      {/* Value in native currency */}
+      <div className="py-2.5 pr-3 text-right">
+        <div className={`text-sm font-mono font-semibold tabular-nums ${isIncome ? "text-accent" : "text-text-primary"}`}>
+          {nativeValue}
+        </div>
+        {convertedValue && (
+          <div className="text-[10px] font-mono text-muted tabular-nums mt-0.5">{convertedValue}</div>
         )}
       </div>
 
-      {/* Value + time */}
-      <div className="text-right shrink-0">
-        <div className={`text-sm font-mono font-semibold tabular-nums ${isIncome ? "text-accent" : "text-text-primary"}`}>
-          {isIncome ? "+" : ""}{fmtDisplay(transaction.value, transaction.currency)}
-          {transaction.currency !== "BRL" && transaction.currency !== displayCurrency && (
-            <span className="text-[10px] font-normal text-muted ml-1">{transaction.currency}</span>
-          )}
-        </div>
-        <div className="text-[10px] font-mono text-muted mt-0.5">{timeStr}</div>
+      {/* Currency badge */}
+      <div className="flex justify-center py-2.5">
+        <span className="text-[10px] font-mono bg-surface-3 border border-border px-1.5 py-0.5 rounded text-muted">
+          {transaction.currency}
+        </span>
       </div>
 
-      {/* Desktop actions (hover reveal) */}
-      <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+      {/* Time */}
+      <div className="text-center py-2.5">
+        <span className="text-[11px] font-mono text-muted tabular-nums">{timeStr}</span>
+      </div>
+
+      {/* Actions (hover reveal) */}
+      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
         <button onClick={e => { e.stopPropagation(); setEditing(true); }}
           className="p-1.5 rounded-lg hover:bg-surface-3 text-muted hover:text-text-primary transition-colors"
           title="Editar">

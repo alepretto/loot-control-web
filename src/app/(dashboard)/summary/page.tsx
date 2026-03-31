@@ -21,10 +21,12 @@ import {
   categoriesApi,
   tagsApi,
   tagFamiliesApi,
+  paymentMethodsApi,
   Transaction,
   Category,
   Tag,
   TagFamily,
+  PaymentMethod,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -100,12 +102,14 @@ export default function SummaryPage() {
   const [categories,  setCategories]  = useState<Category[]>([]);
   const [tags,        setTags]        = useState<Tag[]>([]);
   const [families,    setFamilies]    = useState<TagFamily[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [expandedFamilies,   setExpandedFamilies]   = useState<Set<string>>(new Set());
   const [selectedFamilyId,   setSelectedFamilyId]   = useState<string | null>(null); // "__none__" = sem família
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedTagId,      setSelectedTagId]      = useState<string | null>(null);
   const [trendFullscreen, setTrendFullscreen] = useState(false);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,17 +120,19 @@ export default function SummaryPage() {
       const curr = monthBounds(selectedYear, selectedMonth);
 
       // Phase 1: current month data only — shows UI fast
-      const [currTxData, cats, tagList, familyList] = await Promise.all([
+      const [currTxData, cats, tagList, familyList, pmList] = await Promise.all([
         transactionsApi.list({ ...curr, page_size: 1000 }),
         categoriesApi.list(),
         tagsApi.list(),
         tagFamiliesApi.list(),
+        paymentMethodsApi.list(),
       ]);
       if (cancelled) return;
       setTransactions(currTxData.items);
       setCategories(cats);
       setTags(tagList);
       setFamilies(familyList);
+      setPaymentMethods(pmList);
       setLoading(false);
 
       // Phase 2: load 5 months of history in background (non-blocking)
@@ -148,10 +154,12 @@ export default function SummaryPage() {
   function prevMonth() {
     const { year, month } = navigateMonth(selectedYear, selectedMonth, -1);
     setSelectedYear(year); setSelectedMonth(month);
+    setSelectedPaymentMethodId(null);
   }
   function nextMonth() {
     const { year, month } = navigateMonth(selectedYear, selectedMonth, 1);
     setSelectedYear(year); setSelectedMonth(month);
+    setSelectedPaymentMethodId(null);
   }
 
   function toggleFamily(key: string) {
@@ -226,7 +234,20 @@ export default function SummaryPage() {
     return map;
   }
 
-  const currByFamily = buildFamilyMap(transactions);
+  // Payment method sets + filtered base (must be before currByFamily)
+  const moneyPmIds   = useMemo(() => new Set(paymentMethods.filter(pm => pm.category === "money").map(pm => pm.id)),   [paymentMethods]);
+  const benefitPmIds = useMemo(() => new Set(paymentMethods.filter(pm => pm.category === "benefit").map(pm => pm.id)), [paymentMethods]);
+
+  const pmDisplayTxs = useMemo(() => {
+    if (!selectedPaymentMethodId) return transactions;
+    if (selectedPaymentMethodId === "__money__")
+      return transactions.filter(tx => tx.payment_method_id != null && moneyPmIds.has(tx.payment_method_id));
+    if (selectedPaymentMethodId === "__benefit__")
+      return transactions.filter(tx => tx.payment_method_id != null && benefitPmIds.has(tx.payment_method_id));
+    return transactions.filter(tx => tx.payment_method_id === selectedPaymentMethodId);
+  }, [transactions, selectedPaymentMethodId, moneyPmIds, benefitPmIds]);
+
+  const currByFamily = buildFamilyMap(pmDisplayTxs);
   const prevByFamily = buildFamilyMap(prevTransactions);
 
   function buildCatBreakdown(txList: Transaction[], familyId: string | null) {
@@ -250,7 +271,7 @@ export default function SummaryPage() {
       familyName:        families.find((f) => f.id === familyId)?.name ?? "Sem Família",
       outcome:           currByFamily[key] ?? 0,
       prevOutcome:       prevByFamily[key] ?? 0,
-      categoryBreakdown: buildCatBreakdown(transactions, familyId),
+      categoryBreakdown: buildCatBreakdown(pmDisplayTxs, familyId),
     };
   }).sort((a, b) => b.outcome - a.outcome);
 
@@ -274,7 +295,7 @@ export default function SummaryPage() {
     .map((cat, i) => ({
       id: cat.id,
       name: cat.name,
-      value: transactions
+      value: pmDisplayTxs
         .filter(tx => !tx.symbol && !tx.index)
         .filter(tx => {
           const tag = tags.find(t => t.id === tx.tag_id);
@@ -317,7 +338,7 @@ export default function SummaryPage() {
     .map((tag, i) => ({
       id: tag.id,
       name: tag.name,
-      value: transactions
+      value: pmDisplayTxs
         .filter(tx => !tx.symbol && !tx.index && tx.tag_id === tag.id)
         .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0),
       color: DONUT_COLORS[i % DONUT_COLORS.length],
@@ -341,19 +362,6 @@ export default function SummaryPage() {
       maxBarThickness: 22,
     }],
   };
-
-  // Filtered transactions for the list
-  const filteredTxs = transactions
-    .filter(tx => !tx.symbol && !tx.index)
-    .filter(tx => {
-      const tag = tags.find(t => t.id === tx.tag_id);
-      const cat = categories.find(c => c.id === tag?.category_id);
-      if (selectedTagId && tx.tag_id !== selectedTagId) return false;
-      if (selectedCategoryId && tag?.category_id !== selectedCategoryId) return false;
-      if (selectedFamilyId && (cat?.family_id ?? null) !== resolvedSelectedFamilyId) return false;
-      return true;
-    })
-    .slice(0, 30);
 
   // Trend line (6 months)
   const currSym = displayCurrency === "BRL" ? "R$" : displayCurrency === "USD" ? "$" : "€";
@@ -551,6 +559,100 @@ export default function SummaryPage() {
     },
   ];
 
+  // ── Payment method breakdown ──────────────────────────────────────────────
+  const paymentBreakdown = (() => {
+    let money = 0, benefit = 0;
+    for (const tx of nonInvestmentTxs) {
+      const tag = tags.find(t => t.id === tx.tag_id);
+      if (tag?.type !== "outcome") continue;
+      const v = convertToDisplay(tx.value, tx.currency);
+      if (tx.payment_method_id && moneyPmIds.has(tx.payment_method_id))   money += v;
+      if (tx.payment_method_id && benefitPmIds.has(tx.payment_method_id)) benefit += v;
+    }
+    return { money, benefit };
+  })();
+
+  const hasPaymentMethods = paymentMethods.length > 0;
+
+  // Per-method aggregation (only outcome, only methods with transactions)
+  const paymentMethodItems = paymentMethods
+    .map(pm => {
+      let value = 0;
+      for (const tx of nonInvestmentTxs) {
+        const tag = tags.find(t => t.id === tx.tag_id);
+        if (tag?.type !== "outcome") continue;
+        if (tx.payment_method_id === pm.id) value += convertToDisplay(tx.value, tx.currency);
+      }
+      return { pm, value };
+    })
+    .filter(x => x.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  // Payment type donut (Dinheiro vs Benefício)
+  const pmTypeDonutData = {
+    labels: ["Dinheiro", "Benefício"],
+    datasets: [{
+      data: [paymentBreakdown.money, paymentBreakdown.benefit],
+      backgroundColor: [
+        selectedPaymentMethodId === null || selectedPaymentMethodId === "__money__" ? "#2563ebCC" : "#2563eb33",
+        selectedPaymentMethodId === null || selectedPaymentMethodId === "__benefit__" ? "#22c55eCC" : "#22c55e33",
+      ],
+      borderColor: ["#2563eb", "#22c55e"],
+      borderWidth: 2,
+      hoverOffset: 6,
+    }],
+  };
+  const pmTypeDonutOptions = {
+    cutout: "65%",
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        ...TOOLTIP_STYLE,
+        callbacks: {
+          label: (ctx: { label: string; parsed: number }) =>
+            ` ${ctx.label}: ${formatCurrency(ctx.parsed, displayCurrency)}`,
+        },
+      },
+    },
+    onClick: (_evt: unknown, elements: Array<{ index: number }>) => {
+      if (!elements.length) { setSelectedPaymentMethodId(null); return; }
+      const types = ["__money__", "__benefit__"] as const;
+      const type = types[elements[0].index];
+      setSelectedPaymentMethodId(selectedPaymentMethodId === type ? null : type);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onHover: (evt: any, elements: any[]) => {
+      const canvas = evt?.native?.target as HTMLCanvasElement | null;
+      if (canvas) canvas.style.cursor = elements.length ? "pointer" : "default";
+    },
+  };
+
+  // Per-method bar chart
+  const pmBarChartData = {
+    labels: paymentMethodItems.map(x => x.pm.name),
+    datasets: [{
+      data: paymentMethodItems.map(x => x.value),
+      backgroundColor: paymentMethodItems.map(x => {
+        const color = x.pm.category === "money" ? "#2563eb" : "#22c55e";
+        if (selectedPaymentMethodId === null) return color + "CC";
+        if (selectedPaymentMethodId === "__money__" && x.pm.category === "money") return color + "FF";
+        if (selectedPaymentMethodId === "__benefit__" && x.pm.category === "benefit") return color + "FF";
+        if (selectedPaymentMethodId === x.pm.id) return color + "FF";
+        return color + "33";
+      }),
+      borderColor: paymentMethodItems.map(x => x.pm.category === "money" ? "#2563eb" : "#22c55e"),
+      borderWidth: 1,
+      borderRadius: 4,
+      maxBarThickness: 22,
+    }],
+  };
+  const pmBarOptions = makeBarOptions((_evt, elements) => {
+    if (!elements.length) return;
+    const item = paymentMethodItems[elements[0].index];
+    if (!item) return;
+    setSelectedPaymentMethodId(selectedPaymentMethodId === item.pm.id ? null : item.pm.id);
+  });
+
   // ── Donut: gastos por família ──────────────────────────────────────────────
 
   const donutExpenseData = {
@@ -636,6 +738,79 @@ export default function SummaryPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Payment method breakdown */}
+      {!loading && hasPaymentMethods && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* Donut: por tipo */}
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs uppercase tracking-wider text-muted">Por Tipo de Pagamento</p>
+              {(selectedPaymentMethodId === "__money__" || selectedPaymentMethodId === "__benefit__") && (
+                <button onClick={() => setSelectedPaymentMethodId(null)} className="text-xs text-muted hover:text-text-primary transition-colors">✕ limpar</button>
+              )}
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="relative shrink-0" style={{ width: 110, height: 110 }}>
+                <Doughnut data={pmTypeDonutData} options={pmTypeDonutOptions} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[9px] uppercase tracking-wider text-muted">Total</span>
+                  <span className="text-xs font-bold font-mono text-text-primary mt-0.5">
+                    {formatCurrency(paymentBreakdown.money + paymentBreakdown.benefit, displayCurrency)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-3">
+                {[
+                  { label: "Dinheiro", value: paymentBreakdown.money, color: "#2563eb", type: "__money__" as const },
+                  { label: "Benefício", value: paymentBreakdown.benefit, color: "#22c55e", type: "__benefit__" as const },
+                ].map(({ label, value, color, type }) => {
+                  const total = paymentBreakdown.money + paymentBreakdown.benefit;
+                  const pct = total > 0 ? (value / total) * 100 : 0;
+                  const isSelected = selectedPaymentMethodId === type;
+                  return (
+                    <div
+                      key={type}
+                      className="cursor-pointer group"
+                      onClick={() => setSelectedPaymentMethodId(isSelected ? null : type)}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                          <span className={`text-xs transition-colors ${isSelected ? "text-text-primary font-medium" : "text-text-secondary group-hover:text-text-primary"}`}>{label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-muted">{pct.toFixed(0)}%</span>
+                          <span className="text-xs font-mono font-medium text-text-primary">{formatCurrency(value, displayCurrency)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1 rounded-full bg-surface-3 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${isSelected ? "opacity-100" : "opacity-70 group-hover:opacity-90"}`} style={{ width: `${pct}%`, background: color }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Bar: por método */}
+          {paymentMethodItems.length > 0 && (
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs uppercase tracking-wider text-muted">Por Método</p>
+                {selectedPaymentMethodId && selectedPaymentMethodId !== "__money__" && selectedPaymentMethodId !== "__benefit__" && (
+                  <button onClick={() => setSelectedPaymentMethodId(null)} className="text-xs text-muted hover:text-text-primary transition-colors">✕ limpar</button>
+                )}
+              </div>
+              <div style={{ height: Math.max(100, paymentMethodItems.length * 30 + 24) }}>
+                <Bar data={pmBarChartData} options={pmBarOptions} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -850,46 +1025,51 @@ export default function SummaryPage() {
                   className="bg-surface border border-border rounded-xl overflow-hidden transition-all"
                   style={{ borderLeft: `${isSelected ? 4 : 3}px solid ${familyColor}` }}
                 >
-                  {/* Header: click seleciona, seta expande */}
+                  {/* Header: zona esquerda filtra, zona direita expande */}
                   <div
-                    className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none transition-colors hover:bg-surface-3"
+                    className="flex items-center select-none transition-colors"
                     style={{ background: isSelected ? familyColor + "15" : "#141A22" }}
-                    onClick={handleSelectFamily}
                   >
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
-                    <span className="text-sm font-semibold text-text-primary flex-1 truncate">
-                      {group.familyName}
-                    </span>
-
-                    {isSpike && (
-                      <span className="text-[10px] font-semibold text-danger bg-danger/10 border border-danger/20 px-1.5 py-0.5 rounded-full shrink-0">
-                        ↑ alto
-                      </span>
-                    )}
-
-                    {/* % renda — hidden on mobile to prevent overflow */}
-                    {pctOfIncome !== null && (
-                      <span className="hidden sm:inline text-[11px] text-muted shrink-0">
-                        {pctOfIncome}% renda
-                      </span>
-                    )}
-
-                    {variationPct !== null && (
-                      <span className={`text-[11px] font-medium shrink-0 ${variation > 0 ? "text-danger" : "text-accent"}`}>
-                        {/* Show only arrow on mobile, arrow+% on sm+ */}
-                        <span className="sm:hidden">{variation > 0 ? "▲" : "▼"}</span>
-                        <span className="hidden sm:inline">{variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%</span>
-                      </span>
-                    )}
-
-                    <span className="text-sm font-mono font-semibold shrink-0" style={{ color: familyColor }}>
-                      {formatCurrency(group.outcome, displayCurrency)}
-                    </span>
-                    <button
-                      className="text-muted hover:text-text-primary shrink-0 px-1 transition-colors"
-                      onClick={(e) => { e.stopPropagation(); toggleFamily(key); }}
+                    {/* Zona esquerda — clique filtra */}
+                    <div
+                      className="flex items-center gap-2 flex-1 min-w-0 px-4 py-3 cursor-pointer hover:bg-surface-3/50 transition-colors"
+                      onClick={handleSelectFamily}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: familyColor }} />
+                      <span className="text-sm font-semibold text-text-primary flex-1 truncate">
+                        {group.familyName}
+                      </span>
+
+                      {isSpike && (
+                        <span className="text-[10px] font-semibold text-danger bg-danger/10 border border-danger/20 px-1.5 py-0.5 rounded-full shrink-0">
+                          ↑ alto
+                        </span>
+                      )}
+
+                      {/* % renda — hidden on mobile to prevent overflow */}
+                      {pctOfIncome !== null && (
+                        <span className="hidden sm:inline text-[11px] text-muted shrink-0">
+                          {pctOfIncome}% renda
+                        </span>
+                      )}
+
+                      {variationPct !== null && (
+                        <span className={`text-[11px] font-medium shrink-0 ${variation > 0 ? "text-danger" : "text-accent"}`}>
+                          <span className="sm:hidden">{variation > 0 ? "▲" : "▼"}</span>
+                          <span className="hidden sm:inline">{variation > 0 ? "▲" : "▼"} {Math.abs(Number(variationPct))}%</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Zona direita — clique expande (alvo grande) */}
+                    <button
+                      className="flex items-center gap-2 px-4 py-3 shrink-0 cursor-pointer hover:bg-surface-3/50 transition-colors border-l border-border/40"
+                      onClick={() => toggleFamily(key)}
+                    >
+                      <span className="text-sm font-mono font-semibold" style={{ color: familyColor }}>
+                        {formatCurrency(group.outcome, displayCurrency)}
+                      </span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-muted shrink-0">
                         {isExpanded ? <path d="M18 15l-6-6-6 6" /> : <path d="M6 9l6 6 6-6" />}
                       </svg>
                     </button>
@@ -917,8 +1097,8 @@ export default function SummaryPage() {
                             </div>
                             <div className="space-y-1 pl-2">
                               {catTags.map((tag) => {
-                                const paid = transactions.some((tx) => tx.tag_id === tag.id);
-                                const tagTotal = transactions
+                                const paid = pmDisplayTxs.some((tx) => tx.tag_id === tag.id);
+                                const tagTotal = pmDisplayTxs
                                   .filter((tx) => tx.tag_id === tag.id)
                                   .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
                                 return (

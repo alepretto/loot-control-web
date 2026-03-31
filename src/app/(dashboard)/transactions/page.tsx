@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Category, Currency, PaginatedTransactions, Tag, TagFamily, Transaction,
-  categoriesApi, tagsApi, tagFamiliesApi, transactionsApi,
+  Category, Currency, PaginatedTransactions, Tag, TagFamily, Transaction, PaymentMethod,
+  categoriesApi, tagsApi, tagFamiliesApi, transactionsApi, paymentMethodsApi,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
-import { TransactionRow } from "@/components/transactions/TransactionRow";
+import { TransactionRow, TX_GRID } from "@/components/transactions/TransactionRow";
 import { AddTransactionRow } from "@/components/transactions/AddTransactionRow";
 import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
@@ -140,10 +140,10 @@ function FilterSheet({ open, onClose, filters, families, filteredCategories, fil
               <label className={labelCls}>Período</label>
               <div className="flex items-center gap-2">
                 <input type="date" value={filters.date_from} onChange={e => onFilter("date_from", e.target.value)}
-                  className={`${selectCls} flex-1`} />
+                  className={`${selectCls} flex-1 [color-scheme:dark]`} />
                 <span className="text-muted text-xs shrink-0">até</span>
                 <input type="date" value={filters.date_to} onChange={e => onFilter("date_to", e.target.value)}
-                  className={`${selectCls} flex-1`} />
+                  className={`${selectCls} flex-1 [color-scheme:dark]`} />
               </div>
             </div>
             <button onClick={onClose}
@@ -166,6 +166,7 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [families, setFamilies] = useState<TagFamily[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [page, setPage] = useState(1);
   const [showImport, setShowImport] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -177,12 +178,12 @@ export default function TransactionsPage() {
   });
 
   const load = useCallback(async () => {
-    const [txData, cats, tagList, familyList] = await Promise.all([
+    const [txData, cats, tagList, familyList, pmList] = await Promise.all([
       transactionsApi.list({
         page, page_size: 20,
         currency: (filters.currency as Currency) || undefined,
         date_from: filters.date_from || undefined,
-        date_to: filters.date_to || undefined,
+        date_to: filters.date_to ? `${filters.date_to}T23:59:59` : undefined,
         family_id: filters.family_id || undefined,
         category_id: filters.category_id || undefined,
         tag_id: filters.tag_id || undefined,
@@ -190,8 +191,9 @@ export default function TransactionsPage() {
       categoriesApi.list(),
       tagsApi.list(),
       tagFamiliesApi.list(),
+      paymentMethodsApi.list(),
     ]);
-    setData(txData); setCategories(cats); setTags(tagList); setFamilies(familyList);
+    setData(txData); setCategories(cats); setTags(tagList); setFamilies(familyList); setPaymentMethods(pmList);
   }, [page, filters]);
 
   useEffect(() => { load(); }, [load]);
@@ -289,9 +291,9 @@ export default function TransactionsPage() {
             <option>BRL</option><option>USD</option><option>EUR</option>
           </select>
           <div className="flex items-center gap-2">
-            <input type="date" value={filters.date_from} onChange={e => setFilter("date_from", e.target.value)} className={selectCls(!!filters.date_from)} />
+            <input type="date" value={filters.date_from} onChange={e => setFilter("date_from", e.target.value)} className={`${selectCls(!!filters.date_from)} [color-scheme:dark] w-36`} />
             <span className="text-muted text-sm">—</span>
-            <input type="date" value={filters.date_to} onChange={e => setFilter("date_to", e.target.value)} className={selectCls(!!filters.date_to)} />
+            <input type="date" value={filters.date_to} onChange={e => setFilter("date_to", e.target.value)} className={`${selectCls(!!filters.date_to)} [color-scheme:dark] w-36`} />
           </div>
           {hasFilters && (
             <button onClick={clearFilters}
@@ -309,7 +311,16 @@ export default function TransactionsPage() {
       <div className="flex-1 overflow-auto">
         {/* Desktop: add row */}
         <div className="hidden md:block px-6 pt-4 pb-2 max-w-7xl mx-auto">
-          <AddTransactionRow families={families} categories={categories} tags={tags} onCreated={load} />
+          <AddTransactionRow families={families} categories={categories} tags={tags} paymentMethods={paymentMethods} onCreated={load} />
+        </div>
+
+        {/* Desktop: column header */}
+        <div className={`hidden md:grid ${TX_GRID} max-w-7xl mx-auto px-0 border-b border-border bg-surface-2/60 sticky top-0 z-10`}>
+          {(["Tipo", "Tag", "Família · Categoria", "Valor", "Moeda", "Hora", ""] as const).map((col, i) => (
+            <div key={i} className={`py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-text-secondary ${i === 3 || i === 4 || i === 5 ? "text-right" : ""} ${i === 4 || i === 5 ? "text-center" : ""}`}>
+              {col}
+            </div>
+          ))}
         </div>
 
         {data && data.items.length === 0 ? (
@@ -360,6 +371,7 @@ export default function TransactionsPage() {
                     families={families}
                     categories={categories}
                     tags={tags}
+                    paymentMethods={paymentMethods}
                     grouped
                     onUpdated={load}
                     onDeleted={load}
@@ -400,14 +412,14 @@ export default function TransactionsPage() {
 
       {/* ── Modals / Sheets ───────────────────────────────────────────────── */}
       <AddTransactionModal
-        families={families} categories={categories} tags={tags}
+        families={families} categories={categories} tags={tags} paymentMethods={paymentMethods}
         open={showAddModal} onClose={() => setShowAddModal(false)} onCreated={load}
       />
 
       {editingTx && (
         <EditTransactionModal
           transaction={editingTx}
-          families={families} categories={categories} tags={tags}
+          families={families} categories={categories} tags={tags} paymentMethods={paymentMethods}
           open={!!editingTx}
           onClose={() => setEditingTx(null)}
           onUpdated={() => { load(); setEditingTx(null); }}

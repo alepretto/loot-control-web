@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Transaction, Category, Tag, TagFamily, transactionsApi, Currency } from "@/lib/api";
+import { Transaction, Category, Tag, TagFamily, PaymentMethod, transactionsApi, Currency } from "@/lib/api";
 
 interface Props {
   transaction: Transaction;
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
+  paymentMethods: PaymentMethod[];
   open: boolean;
   onClose: () => void;
   onUpdated: () => void;
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export function EditTransactionModal({
-  transaction, families, categories, tags, open, onClose, onUpdated, onDeleted,
+  transaction, families, categories, tags, paymentMethods, open, onClose, onUpdated, onDeleted,
 }: Props) {
   const [draft, setDraft] = useState(transaction);
   const [saving, setSaving] = useState(false);
@@ -66,6 +67,7 @@ export function EditTransactionModal({
         date_transaction: new Date(draft.date_transaction).toISOString(),
         value: draft.value,
         currency: draft.currency,
+        payment_method_id: draft.payment_method_id ?? null,
         quantity: draft.quantity ?? undefined,
         symbol: draft.symbol ?? undefined,
         index_rate: draft.index_rate ?? undefined,
@@ -174,6 +176,23 @@ export function EditTransactionModal({
                 </div>
               </div>
             </div>
+
+            {/* Método de Pagamento */}
+            {paymentMethods.filter((pm) => pm.is_active).length > 0 && (
+              <div>
+                <label className="block text-[10px] text-text-secondary uppercase tracking-wider font-semibold mb-2">Método de Pagamento</label>
+                <select
+                  value={draft.payment_method_id ?? ""}
+                  onChange={(e) => setDraft({ ...draft, payment_method_id: e.target.value || null })}
+                  className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary/60 transition-all appearance-none"
+                >
+                  <option value="">Não informado</option>
+                  {paymentMethods.filter((pm) => pm.is_active).map((pm) => (
+                    <option key={pm.id} value={pm.id}>{pm.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Investment fields toggle */}
             <button type="button" onClick={() => setShowInvestment(!showInvestment)}
