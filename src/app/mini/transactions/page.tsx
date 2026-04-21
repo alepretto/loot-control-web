@@ -6,9 +6,11 @@ import {
   transactionsApi,
   tagsApi,
   categoriesApi,
+  tagFamiliesApi,
   Transaction,
   Tag,
   Category,
+  TagFamily,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -16,6 +18,7 @@ export default function MiniTransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [families, setFamilies] = useState<TagFamily[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,14 +26,16 @@ export default function MiniTransactionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [txData, tagList, catList] = await Promise.all([
+      const [txData, tagList, catList, famList] = await Promise.all([
         transactionsApi.list({ page_size: 30 }),
         tagsApi.list(),
         categoriesApi.list(),
+        tagFamiliesApi.list(),
       ]);
       setTransactions(txData.items);
       setTags(tagList);
       setCategories(catList);
+      setFamilies(famList);
     } catch {
       setError("Erro ao carregar transações.");
     } finally {
@@ -54,8 +59,13 @@ export default function MiniTransactionsPage() {
   }
 
   function resolveType(tx: Transaction): "income" | "outcome" | null {
-    const tag = tags.find((t) => t.id === tx.tag_id) as Tag | undefined;
-    return tag?.type ?? null;
+    const tag = tags.find((t) => t.id === tx.tag_id);
+    if (!tag) return null;
+    const cat = categories.find((c) => c.id === tag.category_id);
+    if (!cat) return null;
+    const family = families.find((f) => f.id === cat.family_id);
+    if (!family?.nature) return null;
+    return family.nature === "income" ? "income" : "outcome";
   }
 
   return (

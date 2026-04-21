@@ -8,7 +8,8 @@ import {
   TagFamily,
   Category,
   Tag,
-  CategoryType,
+  TagNature,
+  IncomeType,
 } from "@/lib/api";
 
 type OpenForm = "family" | "category" | "tag" | null;
@@ -24,11 +25,12 @@ export default function MiniTagsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [newFamilyName, setNewFamilyName] = useState("");
+  const [newFamilyNature, setNewFamilyNature] = useState<TagNature | "">("");
   const [newCatFamilyId, setNewCatFamilyId] = useState("");
   const [newCatName, setNewCatName] = useState("");
   const [newTagCatId, setNewTagCatId] = useState("");
   const [newTagName, setNewTagName] = useState("");
-  const [newTagType, setNewTagType] = useState<CategoryType>("outcome");
+  const [newTagIncomeType, setNewTagIncomeType] = useState<IncomeType | "">("");
 
   async function load() {
     setLoading(true);
@@ -62,8 +64,8 @@ export default function MiniTagsPage() {
     if (!newFamilyName.trim()) return;
     setSaving(true); setError(null);
     try {
-      await tagFamiliesApi.create({ name: newFamilyName.trim() });
-      setNewFamilyName(""); setOpenForm(null);
+      await tagFamiliesApi.create({ name: newFamilyName.trim(), nature: newFamilyNature || null });
+      setNewFamilyName(""); setNewFamilyNature(""); setOpenForm(null);
       await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erro ao criar família");
@@ -86,8 +88,11 @@ export default function MiniTagsPage() {
     if (!newTagName.trim() || !newTagCatId) return;
     setSaving(true); setError(null);
     try {
-      await tagsApi.create({ name: newTagName.trim(), category_id: newTagCatId, type: newTagType });
-      setNewTagName(""); setNewTagCatId(""); setOpenForm(null);
+      const cat = categories.find((c) => c.id === newTagCatId);
+      const fam = cat ? families.find((f) => f.id === cat.family_id) : undefined;
+      const incomeType = fam?.nature === "income" ? (newTagIncomeType || null) : null;
+      await tagsApi.create({ name: newTagName.trim(), category_id: newTagCatId, income_type: incomeType });
+      setNewTagName(""); setNewTagCatId(""); setNewTagIncomeType(""); setOpenForm(null);
       await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erro ao criar tag");
@@ -147,6 +152,17 @@ export default function MiniTagsPage() {
             placeholder="Ex: Moradia, Lazer, Estudos…"
             className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary"
           />
+          <select
+            value={newFamilyNature}
+            onChange={(e) => setNewFamilyNature(e.target.value as TagNature | "")}
+            className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary"
+          >
+            <option value="">— Natureza não definida —</option>
+            <option value="income">Receita</option>
+            <option value="fixed_expense">Custo Fixo</option>
+            <option value="variable_expense">Custo Variável</option>
+            <option value="investment">Investimento</option>
+          </select>
           <div className="flex gap-2">
             <button onClick={() => setOpenForm(null)} className="flex-1 py-3 bg-surface-2 border border-border rounded-xl text-sm text-muted">Cancelar</button>
             <button onClick={createFamily} disabled={saving || !newFamilyName.trim()} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-semibold disabled:opacity-40">Criar</button>
@@ -182,12 +198,16 @@ export default function MiniTagsPage() {
       )}
 
       {/* Create Tag */}
-      {openForm === "tag" && (
+      {openForm === "tag" && (() => {
+        const selectedCat = categories.find((c) => c.id === newTagCatId);
+        const selectedFam = selectedCat ? families.find((f) => f.id === selectedCat.family_id) : undefined;
+        const isIncomeFamily = selectedFam?.nature === "income";
+        return (
         <div className="bg-surface border border-border rounded-2xl p-4 space-y-3">
           <p className="text-sm font-semibold text-text-primary">Nova Tag</p>
           <select
             value={newTagCatId}
-            onChange={(e) => setNewTagCatId(e.target.value)}
+            onChange={(e) => { setNewTagCatId(e.target.value); setNewTagIncomeType(""); }}
             className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary"
           >
             <option value="">Selecione a categoria</option>
@@ -207,28 +227,31 @@ export default function MiniTagsPage() {
             placeholder="Nome da tag"
             className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary"
           />
-          {/* Type toggle */}
-          <div className="flex rounded-xl overflow-hidden border border-border">
-            {(["outcome", "income"] as CategoryType[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setNewTagType(t)}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  newTagType === t
-                    ? t === "outcome" ? "bg-danger/20 text-danger" : "bg-accent/20 text-accent"
-                    : "bg-surface text-muted"
-                }`}
-              >
-                {t === "outcome" ? "Saída" : "Entrada"}
-              </button>
-            ))}
-          </div>
+          {isIncomeFamily && (
+            <div className="flex rounded-xl overflow-hidden border border-border">
+              {(["active", "passive", "sporadic"] as IncomeType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewTagIncomeType(t)}
+                  className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                    newTagIncomeType === t
+                      ? "bg-accent/20 text-accent"
+                      : "bg-surface text-muted"
+                  }`}
+                >
+                  {t === "active" ? "Ativa" : t === "passive" ? "Passiva" : "Eventual"}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={() => setOpenForm(null)} className="flex-1 py-3 bg-surface-2 border border-border rounded-xl text-sm text-muted">Cancelar</button>
             <button onClick={createTag} disabled={saving || !newTagName.trim() || !newTagCatId} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-semibold disabled:opacity-40">Criar</button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Tree */}
       {loading ? (
@@ -241,6 +264,7 @@ export default function MiniTagsPage() {
             const famCats = categories.filter((c) => c.family_id === family.id);
             const isOpen = expanded.has(family.id);
             const tagCount = famCats.reduce((s, c) => s + tags.filter((t) => t.category_id === c.id).length, 0);
+            const isIncomeFamily = family.nature === "income";
             return (
               <div key={family.id} className="bg-surface border border-border rounded-2xl overflow-hidden">
                 <button
@@ -277,7 +301,7 @@ export default function MiniTagsPage() {
                           ) : catTags.map((tag) => (
                             <div key={tag.id} className="flex items-center justify-between px-4 py-3 min-h-[48px]">
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${tag.type === "income" ? "bg-accent" : "bg-danger"}`} />
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isIncomeFamily ? "bg-accent" : "bg-danger"}`} />
                                 <span className={`text-sm truncate ${tag.is_active ? "text-text-primary" : "text-muted line-through"}`}>
                                   {tag.name}
                                 </span>

@@ -5,9 +5,17 @@
 body {
   background-color: #070B11;
   color: #e6edf3;
+  font-size: 15px; /* Base font size increased for readability */
   /* Subtle dot-grid texture — adds "data space" depth */
   background-image: radial-gradient(circle at 1px 1px, rgba(32, 40, 47, 0.55) 1px, transparent 0);
   background-size: 28px 28px;
+}
+
+/* Desktop font size adjustments */
+@media (min-width: 768px) {
+  html {
+    font-size: 15px;
+  }
 }
 
 /* Spreadsheet-style table */

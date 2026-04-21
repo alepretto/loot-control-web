@@ -6,12 +6,14 @@ import {
   transactionsApi,
   tagsApi,
   categoriesApi,
+  tagFamiliesApi,
   marketDataApi,
   miniApi,
   usersApi,
   Transaction,
   Tag,
   Category,
+  TagFamily,
   ExchangeRates,
 } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -44,6 +46,7 @@ export default function MiniHomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [families, setFamilies] = useState<TagFamily[]>([]);
   const [rates, setRates] = useState<ExchangeRates>({ USD: null, EUR: null });
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,15 +71,17 @@ export default function MiniHomePage() {
     async function load() {
       setLoading(true);
       const bounds = monthBounds(year, month);
-      const [txData, tagList, catList, ratesData] = await Promise.all([
+      const [txData, tagList, catList, famList, ratesData] = await Promise.all([
         transactionsApi.list({ ...bounds, page_size: 2000 }),
         tagsApi.list(),
         categoriesApi.list(),
+        tagFamiliesApi.list(),
         marketDataApi.exchangeRates().catch(() => ({ USD: null, EUR: null })),
       ]);
       setTransactions(txData.items);
       setTags(tagList);
       setCategories(catList);
+      setFamilies(famList);
       setRates(ratesData);
       setLoading(false);
     }
@@ -87,15 +92,24 @@ export default function MiniHomePage() {
     return tags.find((t) => t.id === tx.tag_id);
   }
 
+  function getTagNature(tx: Transaction): string | null {
+    const tag = tags.find((t) => t.id === tx.tag_id);
+    if (!tag) return null;
+    const cat = categories.find((c) => c.id === tag.category_id);
+    if (!cat) return null;
+    const family = families.find((f) => f.id === cat.family_id);
+    return family?.nature ?? null;
+  }
+
   // Exclude investment transactions
   const nonInvestment = transactions.filter((tx) => !tx.symbol && !tx.index);
 
   const totalIncome = nonInvestment
-    .filter((tx) => resolveTag(tx)?.type === "income")
+    .filter((tx) => getTagNature(tx) === "income")
     .reduce((s, tx) => s + toBRL(tx.value, tx.currency, rates), 0);
 
   const totalOutcome = nonInvestment
-    .filter((tx) => resolveTag(tx)?.type === "outcome")
+    .filter((tx) => getTagNature(tx) !== "income" && getTagNature(tx) !== null)
     .reduce((s, tx) => s + toBRL(tx.value, tx.currency, rates), 0);
 
   const balance = totalIncome - totalOutcome;
@@ -181,7 +195,7 @@ export default function MiniHomePage() {
           <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden">
             {recent.map((tx) => {
               const tag = resolveTag(tx);
-              const isIncome = tag?.type === "income";
+              const isIncome = getTagNature(tx) === "income";
               return (
                 <div key={tx.id} className="flex items-center justify-between px-4 py-3 min-h-[52px]">
                   <div className="flex flex-col min-w-0">

@@ -50,10 +50,16 @@ function buildFamilyGroups(
 ): FamGroup[] {
   const tagById = new Map(tags.map((t) => [t.id, t]));
   const catById = new Map(categories.map((c) => [c.id, c]));
+  const famById = new Map(families.map((f) => [f.id, f]));
 
   const isExpense = (tx: Transaction) => {
     if (tx.symbol || tx.index) return false;
-    return tagById.get(tx.tag_id)?.type === "outcome";
+    const tag = tagById.get(tx.tag_id);
+    if (!tag) return false;
+    const cat = catById.get(tag.category_id);
+    if (!cat || !cat.family_id) return false;
+    const fam = famById.get(cat.family_id);
+    return fam?.nature !== "income";
   };
 
   const curByTag: Record<string, number> = {};
@@ -73,7 +79,12 @@ function buildFamilyGroups(
     if (!fam) continue;
     const catGroup: CatGroup = { id: cat.id, name: cat.name, cur: 0, prev: 0, tags: [] };
 
-    for (const tag of tags.filter((t) => t.category_id === cat.id && t.type === "outcome")) {
+    for (const tag of tags.filter((t) => {
+      if (t.category_id !== cat.id) return false;
+      if (!cat.family_id) return false;
+      const fam = famById.get(cat.family_id);
+      return fam?.nature !== "income";
+    })) {
       const c = curByTag[tag.id] ?? 0;
       const p = prevByTag[tag.id] ?? 0;
       if (c === 0 && p === 0) continue;
@@ -254,21 +265,42 @@ export default function MiniSummaryPage() {
   }, [selectedYear, selectedMonth]);
 
   const tagById = new Map(tags.map((t) => [t.id, t]));
+  const catById = new Map(categories.map((c) => [c.id, c]));
+  const famById = new Map(families.map((f) => [f.id, f]));
+
+  const isExpense = (tx: Transaction) => {
+    if (tx.symbol || tx.index) return false;
+    const tag = tagById.get(tx.tag_id);
+    if (!tag) return false;
+    const cat = catById.get(tag.category_id);
+    if (!cat || !cat.family_id) return false;
+    const fam = famById.get(cat.family_id);
+    return fam?.nature !== "income";
+  };
+
+  const getTagNature = (tagId: string): string | null => {
+    const tag = tagById.get(tagId);
+    if (!tag) return null;
+    const cat = catById.get(tag.category_id);
+    if (!cat || !cat.family_id) return null;
+    const fam = famById.get(cat.family_id);
+    return fam?.nature ?? null;
+  };
 
   const nonInv = (tx: Transaction) => !tx.symbol && !tx.index;
 
   const totalIncome = transactions
-    .filter((tx) => nonInv(tx) && tagById.get(tx.tag_id)?.type === "income")
+    .filter((tx) => nonInv(tx) && getTagNature(tx.tag_id) === "income")
     .reduce((s, tx) => s + tx.value, 0);
   const prevIncome = prevTransactions
-    .filter((tx) => nonInv(tx) && tagById.get(tx.tag_id)?.type === "income")
+    .filter((tx) => nonInv(tx) && getTagNature(tx.tag_id) === "income")
     .reduce((s, tx) => s + tx.value, 0);
 
   const totalOutcome = transactions
-    .filter((tx) => nonInv(tx) && tagById.get(tx.tag_id)?.type === "outcome")
+    .filter((tx) => nonInv(tx) && getTagNature(tx.tag_id) !== "income" && getTagNature(tx.tag_id) !== null)
     .reduce((s, tx) => s + tx.value, 0);
   const prevOutcome = prevTransactions
-    .filter((tx) => nonInv(tx) && tagById.get(tx.tag_id)?.type === "outcome")
+    .filter((tx) => nonInv(tx) && getTagNature(tx.tag_id) !== "income" && getTagNature(tx.tag_id) !== null)
     .reduce((s, tx) => s + tx.value, 0);
 
   const balance = totalIncome - totalOutcome;

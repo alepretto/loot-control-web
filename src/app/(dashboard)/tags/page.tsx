@@ -2,9 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Category, Tag, TagFamily,
-  categoriesApi, tagsApi, tagFamiliesApi, CategoryType,
+  Category, Tag, TagFamily, TagNature, IncomeType,
+  categoriesApi, tagsApi, tagFamiliesApi,
 } from "@/lib/api";
+
+const NATURE_LABELS: Record<TagNature, { label: string; hue: number }> = {
+  income:           { label: "Receita",    hue: 150 },
+  fixed_expense:    { label: "Custo Fixo", hue: 25  },
+  variable_expense: { label: "Variável",   hue: 10  },
+  investment:       { label: "Investimento",hue: 220 },
+};
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const PlusIcon = ({ className = "w-4 h-4" }) => (
@@ -83,6 +90,7 @@ export default function TagsPage() {
 
   // Modals
   const [showCreateFamily, setShowCreateFamily] = useState(false);
+  const [editingFamily, setEditingFamily] = useState<TagFamily | null>(null);
   const [showCreateCat, setShowCreateCat] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState<string | null>(null); // catId
   const [movingCatId, setMovingCatId] = useState<string | null>(null);
@@ -201,38 +209,80 @@ export default function TagsPage() {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2 px-2">
-          {families.map(f => {
-            const catCount = categories.filter(c => c.family_id === f.id).length;
-            const isSelected = selectedFamilyId === f.id;
-            const isPendingDelete = pendingDeleteId === f.id;
+          {(() => {
+            const NATURE_ORDER: Array<import("@/lib/api").TagNature | null> = [
+              "income", "fixed_expense", "variable_expense", "investment", null
+            ];
+            const NATURE_SECTION_LABELS: Record<string, string> = {
+              income: "Receita",
+              fixed_expense: "Custo Fixo",
+              variable_expense: "Custo Variável",
+              investment: "Investimento",
+            };
 
-            return (
-              <div
-                key={f.id}
-                onClick={(e) => { e.stopPropagation(); selectFamily(f.id); }}
-                className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
-                  isSelected ? "bg-primary/10 text-primary" : "text-muted hover:bg-surface-2 hover:text-text-primary"
-                }`}
-              >
-                <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${isSelected ? "bg-primary" : "bg-border group-hover:bg-muted"} transition-colors`} />
-                <span className="flex-1 text-sm font-medium truncate">{f.name}</span>
-                <span className={`text-[10px] font-mono shrink-0 ${isSelected ? "text-primary/70" : "text-muted/60"}`}>{catCount}</span>
+            const grouped = NATURE_ORDER.map(nat => ({
+              nature: nat,
+              items: families.filter(f => (f.nature ?? null) === nat),
+            })).filter(g => g.items.length > 0);
 
-                {/* Delete / confirm */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteFamily(f.id); }}
-                  className={`shrink-0 transition-all duration-150 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                    isPendingDelete
-                      ? "text-danger bg-danger/15 border border-danger/30 opacity-100"
-                      : "text-transparent group-hover:text-muted/50 hover:!text-danger opacity-0 group-hover:opacity-100"
-                  }`}
-                  title="Excluir família"
-                >
-                  {isPendingDelete ? "Confirmar" : <TrashIcon />}
-                </button>
+            return grouped.map(({ nature, items }) => (
+              <div key={nature ?? "__none__"} className="mb-3">
+                {/* Nature section header */}
+                <div className="flex items-center gap-2 px-2 py-1 mb-0.5">
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-widest"
+                    style={{
+                      color: nature
+                        ? `oklch(0.72 0.14 ${NATURE_LABELS[nature].hue})`
+                        : "var(--muted)",
+                    }}
+                  >
+                    {nature ? NATURE_SECTION_LABELS[nature] : "Sem natureza"}
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: nature ? `oklch(0.3 0.06 ${NATURE_LABELS[nature].hue} / 0.5)` : "var(--border)" }} />
+                </div>
+
+                {items.map(f => {
+                  const catCount = categories.filter(c => c.family_id === f.id).length;
+                  const isSelected = selectedFamilyId === f.id;
+                  const isPendingDelete = pendingDeleteId === f.id;
+
+                  return (
+                    <div
+                      key={f.id}
+                      onClick={(e) => { e.stopPropagation(); selectFamily(f.id); }}
+                      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+                        isSelected ? "bg-primary/10 text-primary" : "text-muted hover:bg-surface-2 hover:text-text-primary"
+                      }`}
+                    >
+                      <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${isSelected ? "bg-primary" : "bg-border group-hover:bg-muted"} transition-colors`} />
+                      <span className="flex-1 text-sm font-medium truncate">{f.name}</span>
+                      <span className={`text-[10px] font-mono shrink-0 ${isSelected ? "text-primary/70" : "text-muted/60"}`}>{catCount}</span>
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingFamily(f); }}
+                        className="shrink-0 text-transparent group-hover:text-muted/50 hover:!text-primary opacity-0 group-hover:opacity-100 transition-all duration-150 rounded px-1.5 py-0.5"
+                        title="Editar família"
+                      >
+                        <PencilIcon />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteFamily(f.id); }}
+                        className={`shrink-0 transition-all duration-150 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                          isPendingDelete
+                            ? "text-danger bg-danger/15 border border-danger/30 opacity-100"
+                            : "text-transparent group-hover:text-muted/50 hover:!text-danger opacity-0 group-hover:opacity-100"
+                        }`}
+                        title="Excluir família"
+                      >
+                        {isPendingDelete ? "Confirmar" : <TrashIcon />}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ));
+          })()}
 
           {families.length === 0 && (
             <p className="text-xs text-muted text-center py-6 px-4">Nenhuma família.<br />Crie uma para começar.</p>
@@ -256,9 +306,21 @@ export default function TagsPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold text-text-primary truncate">
-              {selectedFamily?.name ?? "Sem família"}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold text-text-primary truncate">
+                {selectedFamily?.name ?? "Sem família"}
+              </h1>
+              {selectedFamily?.nature && (
+                <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{
+                    background: `oklch(0.26 0.06 ${NATURE_LABELS[selectedFamily.nature].hue} / 0.7)`,
+                    color: `oklch(0.88 0.12 ${NATURE_LABELS[selectedFamily.nature].hue})`,
+                    borderColor: `oklch(0.5 0.12 ${NATURE_LABELS[selectedFamily.nature].hue} / 0.4)`,
+                  }}>
+                  {NATURE_LABELS[selectedFamily.nature].label}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted mt-0.5">
               {selectedCats.length} {selectedCats.length === 1 ? "categoria" : "categorias"} ·{" "}
               {selectedCats.reduce((acc, c) => acc + tags.filter(t => t.category_id === c.id).length, 0)} tags
@@ -401,11 +463,8 @@ export default function TagsPage() {
                               className="group flex items-center gap-3 px-5 py-2.5 hover:bg-surface-2/40 transition-colors border-t border-border/40"
                               onClick={e => e.stopPropagation()}
                             >
-                              {/* Type dot */}
-                              <span
-                                className={`shrink-0 w-2 h-2 rounded-full ${tag.type === "income" ? "bg-accent" : "bg-danger"}`}
-                                title={tag.type === "income" ? "Entrada" : "Saída"}
-                              />
+                              {/* Nature dot */}
+                              <span className="shrink-0 w-2 h-2 rounded-full bg-border" />
 
                               {/* Name (or rename input) */}
                               {isRenamingTag ? (
@@ -432,13 +491,11 @@ export default function TagsPage() {
 
                               {/* Badges */}
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
-                                  tag.type === "income"
-                                    ? "text-accent bg-accent/8 border-accent/20"
-                                    : "text-danger bg-danger/8 border-danger/20"
-                                }`}>
-                                  {tag.type === "income" ? "Entrada" : "Saída"}
-                                </span>
+                                {tag.income_type && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border text-accent bg-accent/8 border-accent/20">
+                                    {tag.income_type === "active" ? "Ativa" : tag.income_type === "passive" ? "Passiva" : "Eventual"}
+                                  </span>
+                                )}
                                 {!tag.is_active && (
                                   <span className="text-[10px] text-muted bg-surface-3 border border-border px-1.5 py-0.5 rounded-full">
                                     Inativo
@@ -509,6 +566,13 @@ export default function TagsPage() {
           onCreated={() => { setShowCreateFamily(false); load(); }}
         />
       )}
+      {editingFamily && (
+        <EditFamilyModal
+          family={editingFamily}
+          onClose={() => setEditingFamily(null)}
+          onUpdated={() => { setEditingFamily(null); load(); }}
+        />
+      )}
       {showCreateCat && (
         <CreateCategoryModal
           families={families}
@@ -521,6 +585,7 @@ export default function TagsPage() {
         <CreateTagModal
           catId={showCreateTag}
           categories={categories}
+          families={families}
           onClose={() => setShowCreateTag(null)}
           onCreated={() => { setShowCreateTag(null); load(); }}
         />
@@ -532,25 +597,76 @@ export default function TagsPage() {
 // ─── Create modals ─────────────────────────────────────────────────────────────
 function CreateFamilyModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState("");
+  const [nature, setNature] = useState<TagNature | "">("");
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    await tagFamiliesApi.create({ name: name.trim() });
+    await tagFamiliesApi.create({ name: name.trim(), nature: nature || null });
     onCreated();
   }
 
   return (
     <Modal title="Nova família" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
+        <ModalField label="Natureza">
+          <select value={nature} onChange={e => setNature(e.target.value as TagNature | "")} className={modalSelectCls}>
+            <option value="">— Não definida —</option>
+            {(Object.entries(NATURE_LABELS) as [TagNature, { label: string }][]).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </ModalField>
         <ModalField label="Nome">
           <input autoFocus value={name} onChange={e => setName(e.target.value)}
             placeholder="ex: Moradia, Alimentação, Lazer…"
             className={modalInputCls} />
         </ModalField>
         <ModalActions onClose={onClose} loading={loading} label="Criar família" />
+      </form>
+    </Modal>
+  );
+}
+
+function EditFamilyModal({ family, onClose, onUpdated }: { family: TagFamily; onClose: () => void; onUpdated: () => void }) {
+  const [name, setName] = useState(family.name);
+  const [nature, setNature] = useState<TagNature | "">(family.nature ?? "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setLoading(true); setError(null);
+    try {
+      await tagFamiliesApi.update(family.id, { name: name.trim(), nature: nature || null });
+      onUpdated();
+    } catch {
+      setError("Já existe uma família com esse nome.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal title="Editar família" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <ModalField label="Natureza">
+          <select value={nature} onChange={e => setNature(e.target.value as TagNature | "")} className={modalSelectCls}>
+            <option value="">— Não definida —</option>
+            {(Object.entries(NATURE_LABELS) as [TagNature, { label: string }][]).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+        </ModalField>
+        <ModalField label="Nome">
+          <input autoFocus value={name} onChange={e => { setName(e.target.value); setError(null); }}
+            placeholder="ex: Moradia, Alimentação, Lazer…"
+            className={modalInputCls} />
+          {error && <p className="text-xs text-danger mt-1">{error}</p>}
+        </ModalField>
+        <ModalActions onClose={onClose} loading={loading} label="Salvar" />
       </form>
     </Modal>
   );
@@ -592,19 +708,23 @@ function CreateCategoryModal({
 }
 
 function CreateTagModal({
-  catId, categories, onClose, onCreated,
-}: { catId: string; categories: Category[]; onClose: () => void; onCreated: () => void }) {
+  catId, categories, families, onClose, onCreated,
+}: { catId: string; categories: Category[]; families: TagFamily[]; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<CategoryType>("outcome");
+  const [incomeType, setIncomeType] = useState<IncomeType | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const cat = categories.find(c => c.id === catId);
+  const family = families.find(f => f.id === cat?.family_id);
+  const isIncome = family?.nature === "income";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true); setError(null);
     try {
-      await tagsApi.create({ name: name.trim(), category_id: catId, type });
+      await tagsApi.create({ name: name.trim(), category_id: catId, income_type: isIncome ? (incomeType || null) : null });
       onCreated();
     } catch {
       setError("Já existe uma tag com esse nome nesta categoria.");
@@ -612,28 +732,26 @@ function CreateTagModal({
     }
   }
 
-  const cat = categories.find(c => c.id === catId);
-
   return (
     <Modal title={`Nova tag — ${cat?.name ?? ""}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <ModalField label="Tipo">
-          <div className="grid grid-cols-2 gap-2">
-            {(["outcome", "income"] as CategoryType[]).map(t => (
-              <button key={t} type="button" onClick={() => setType(t)}
-                className={`py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${
-                  type === t
-                    ? t === "outcome"
-                      ? "bg-danger/15 border-danger/40 text-danger"
-                      : "bg-accent/15 border-accent/40 text-accent"
-                    : "bg-surface border-border text-muted"
-                }`}
-              >
-                {t === "outcome" ? "Saída" : "Entrada"}
-              </button>
-            ))}
-          </div>
-        </ModalField>
+        {isIncome && (
+          <ModalField label="Tipo de receita">
+            <div className="grid grid-cols-3 gap-2">
+              {(["active", "passive", "sporadic"] as IncomeType[]).map(t => (
+                <button key={t} type="button" onClick={() => setIncomeType(t)}
+                  className={`py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                    incomeType === t
+                      ? "bg-accent/15 border-accent/40 text-accent"
+                      : "bg-surface border-border text-muted"
+                  }`}
+                >
+                  {t === "active" ? "Ativa" : t === "passive" ? "Passiva" : "Eventual"}
+                </button>
+              ))}
+            </div>
+          </ModalField>
+        )}
         <ModalField label="Nome">
           <input autoFocus value={name} onChange={e => { setName(e.target.value); setError(null); }}
             placeholder="ex: Mensalidade, Feira, Salário…"

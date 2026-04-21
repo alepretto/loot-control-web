@@ -7,14 +7,30 @@ import {
   tagFamiliesApi,
   categoriesApi,
   tagsApi,
+  accountsApi,
   TagFamily,
   Category,
   Tag,
-  CategoryType,
+  TagNature,
+  Account,
   Currency,
 } from "@/lib/api";
 
 const CURRENCIES: Currency[] = ["BRL", "USD", "EUR"];
+
+const NATURE_ORDER: TagNature[] = ["income", "fixed_expense", "variable_expense", "investment"];
+const NATURE_LABELS: Record<TagNature, string> = {
+  income: "Receita",
+  fixed_expense: "Custo Fixo",
+  variable_expense: "Custo Variável",
+  investment: "Investimento",
+};
+const NATURE_COLORS: Record<TagNature, string> = {
+  income: "text-accent border-accent/30 bg-accent/10",
+  fixed_expense: "text-danger border-danger/30 bg-danger/10",
+  variable_expense: "text-orange-500 border-orange-500/30 bg-orange-500/10",
+  investment: "text-primary border-primary/30 bg-primary/10",
+};
 
 function haptic(type: "medium" | "success") {
   try {
@@ -35,14 +51,15 @@ export default function NewTransactionPage() {
   const [families, setFamilies] = useState<TagFamily[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  // Form state
   const [valueStr, setValueStr] = useState("");
-  const [txType, setTxType] = useState<CategoryType>("outcome");
+  const [selectedNature, setSelectedNature] = useState<TagNature | "">("");
   const [selectedFamilyId, setSelectedFamilyId] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedTagId, setSelectedTagId] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [date, setDate] = useState(() =>
     new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo" }).format(new Date())
   );
@@ -62,28 +79,46 @@ export default function NewTransactionPage() {
 
   useEffect(() => {
     async function load() {
-      const [fams, cats, tagList] = await Promise.all([
+      const [fams, cats, tagList, accts] = await Promise.all([
         tagFamiliesApi.list(),
         categoriesApi.list(),
         tagsApi.list({ is_active: true }),
+        accountsApi.list({ is_active: true }),
       ]);
       setFamilies(fams);
       setCategories(cats);
       setTags(tagList);
+      setAccounts(accts as Account[]);
       setLoadingData(false);
     }
     load();
   }, []);
 
-  // Filtered categories based on selected family
+  const filteredFamilies = selectedNature
+    ? families.filter((f) => f.nature === selectedNature)
+    : families;
+
   const filteredCategories = selectedFamilyId
     ? categories.filter((c) => c.family_id === selectedFamilyId)
-    : categories;
+    : [];
 
-  // Filtered tags based on selected category + type
   const filteredTags = selectedCategoryId
-    ? tags.filter((t) => t.category_id === selectedCategoryId && t.type === txType && t.is_active)
-    : tags.filter((t) => t.type === txType && t.is_active);
+    ? tags.filter((t) => t.category_id === selectedCategoryId && t.is_active)
+    : [];
+
+  const normalAccounts = (accounts as Account[]).filter(
+    (a) => a.type !== "credit_card" && a.is_active
+  );
+  const creditAccounts = (accounts as Account[]).filter(
+    (a) => a.type === "credit_card" && a.is_active
+  );
+
+  function handleNatureChange(nature: TagNature | "") {
+    setSelectedNature(nature);
+    setSelectedFamilyId("");
+    setSelectedCategoryId("");
+    setSelectedTagId("");
+  }
 
   function handleFamilyChange(id: string) {
     setSelectedFamilyId(id);
@@ -94,15 +129,6 @@ export default function NewTransactionPage() {
   function handleCategoryChange(id: string) {
     setSelectedCategoryId(id);
     setSelectedTagId("");
-  }
-
-  function handleTypeChange(type: CategoryType) {
-    setTxType(type);
-    // Reset tag selection if current tag doesn't match new type
-    const currentTag = tags.find((t) => t.id === selectedTagId);
-    if (currentTag && currentTag.type !== type) {
-      setSelectedTagId("");
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -118,6 +144,10 @@ export default function NewTransactionPage() {
       setError("Selecione uma tag.");
       return;
     }
+    if (!selectedAccountId) {
+      setError("Selecione uma conta.");
+      return;
+    }
 
     haptic("medium");
     setSubmitting(true);
@@ -125,6 +155,7 @@ export default function NewTransactionPage() {
     try {
       await transactionsApi.create({
         tag_id: selectedTagId,
+        account_id: selectedAccountId,
         date_transaction: new Date(`${date}T${time}:00`).toISOString(),
         value,
         currency,
@@ -147,7 +178,6 @@ export default function NewTransactionPage() {
 
   return (
     <div className="px-4 pt-6 pb-8 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
@@ -161,7 +191,7 @@ export default function NewTransactionPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Value input */}
+        {/* Value */}
         <div className="bg-surface border border-border rounded-2xl p-5 text-center">
           <p className="text-xs uppercase tracking-wider text-muted mb-3">Valor</p>
           <input
@@ -176,24 +206,22 @@ export default function NewTransactionPage() {
           />
         </div>
 
-        {/* Type toggle */}
+        {/* Nature selector */}
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted mb-2">Tipo</p>
-          <div className="flex gap-3">
-            {(["outcome", "income"] as CategoryType[]).map((t) => (
+          <p className="text-xs uppercase tracking-wider text-muted mb-2">Natureza</p>
+          <div className="grid grid-cols-2 gap-2">
+            {NATURE_ORDER.map((n) => (
               <button
-                key={t}
+                key={n}
                 type="button"
-                onClick={() => handleTypeChange(t)}
-                className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors min-h-[48px] border ${
-                  txType === t
-                    ? t === "outcome"
-                      ? "bg-danger/10 border-danger text-danger"
-                      : "bg-accent/10 border-accent text-accent"
+                onClick={() => handleNatureChange(n)}
+                className={`py-3 rounded-xl text-sm font-semibold transition-colors min-h-[48px] border ${
+                  selectedNature === n
+                    ? NATURE_COLORS[n]
                     : "bg-surface border-border text-muted"
                 }`}
               >
-                {t === "outcome" ? "Gasto" : "Receita"}
+                {NATURE_LABELS[n]}
               </button>
             ))}
           </div>
@@ -207,27 +235,32 @@ export default function NewTransactionPage() {
             onChange={(e) => handleFamilyChange(e.target.value)}
             className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
           >
-            <option value="">Todas as famílias</option>
-            {families.map((f) => (
+            <option value="">Selecione uma família</option>
+            {filteredFamilies.map((f) => (
               <option key={f.id} value={f.id}>{f.name}</option>
             ))}
           </select>
+          {filteredFamilies.length === 0 && selectedNature && (
+            <p className="text-xs text-muted mt-1">Nenhuma família com essa natureza.</p>
+          )}
         </div>
 
         {/* Category selector */}
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted mb-2">Categoria</p>
-          <select
-            value={selectedCategoryId}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
-          >
-            <option value="">Todas as categorias</option>
-            {filteredCategories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
+        {filteredCategories.length > 0 && (
+          <div>
+            <p className="text-xs uppercase tracking-wider text-muted mb-2">Categoria</p>
+            <select
+              value={selectedCategoryId}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
+            >
+              <option value="">Selecione uma categoria</option>
+              {filteredCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Tag selector */}
         <div>
@@ -243,10 +276,37 @@ export default function NewTransactionPage() {
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
-          {filteredTags.length === 0 && (
-            <p className="text-xs text-muted mt-1">
-              Nenhuma tag {txType === "outcome" ? "de gasto" : "de receita"} disponível{selectedCategoryId ? " nesta categoria" : ""}.
-            </p>
+          {filteredTags.length === 0 && selectedFamilyId && (
+            <p className="text-xs text-muted mt-1">Nenhuma tag disponível nesta categoria.</p>
+          )}
+        </div>
+
+        {/* Account selector */}
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted mb-2">Conta</p>
+          {normalAccounts.length > 0 && (
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px] mb-2"
+            >
+              <option value="">Conta corrente/débito</option>
+              {normalAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
+          {creditAccounts.length > 0 && (
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="w-full bg-surface border border-border rounded-xl px-4 py-3.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors min-h-[48px]"
+            >
+              <option value="">Cartão de crédito</option>
+              {creditAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
           )}
         </div>
 

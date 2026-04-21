@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Category, Tag, TagFamily, PaymentMethod, transactionsApi, CategoryType, Currency } from "@/lib/api";
+import { Account, Category, Tag, TagFamily, transactionsApi, Currency } from "@/lib/api";
 
 interface Props {
   families: TagFamily[];
   categories: Category[];
   tags: Tag[];
-  paymentMethods: PaymentMethod[];
+  accounts?: Account[];
   onCreated: () => void;
 }
 
@@ -29,13 +29,12 @@ function brazilDatetime(): string {
 function makeEmpty() {
   return {
     date_transaction: brazilDatetime(),
-    type: "outcome" as CategoryType,
     family_id: "",
     category_id: "",
     tag_id: "",
+    account_id: "",
     value: "",
     currency: "BRL" as Currency,
-    payment_method_id: "",
     quantity: "",
     symbol: "",
     index_rate: "",
@@ -43,30 +42,28 @@ function makeEmpty() {
   };
 }
 
-export function AddTransactionRow({ families, categories, tags, paymentMethods, onCreated }: Props) {
+export function AddTransactionRow({ families, categories, tags, accounts = [], onCreated }: Props) {
   const [form, setForm] = useState(makeEmpty);
   const [saving, setSaving] = useState(false);
 
   const filteredCategories = categories.filter(
-    (c) =>
-      (form.family_id === "" || c.family_id === form.family_id) &&
-      tags.some((t) => t.type === form.type && t.category_id === c.id),
+    (c) => form.family_id === "" || c.family_id === form.family_id,
   );
   const filteredTags = tags.filter(
-    (t) => t.type === form.type && (form.category_id === "" || t.category_id === form.category_id),
+    (t) => form.category_id === "" || t.category_id === form.category_id,
   );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.tag_id || !form.value) return;
+    if (!form.tag_id || !form.account_id || !form.value) return;
     setSaving(true);
     try {
       await transactionsApi.create({
         tag_id: form.tag_id,
+        account_id: form.account_id,
         date_transaction: new Date(form.date_transaction).toISOString(),
         value: parseFloat(form.value),
         currency: form.currency,
-        payment_method_id: form.payment_method_id || null,
         quantity: form.quantity ? parseFloat(form.quantity) : undefined,
         symbol: form.symbol || undefined,
         index_rate: form.index_rate ? parseFloat(form.index_rate) : undefined,
@@ -94,15 +91,16 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
           style={{ width: 160 }}
         />
         <select
-          value={form.type}
-          onChange={(e) =>
-            setForm({ ...form, type: e.target.value as CategoryType, category_id: "", tag_id: "" })
-          }
+          value={form.account_id}
+          onChange={(e) => setForm({ ...form, account_id: e.target.value })}
+          required
           className={inputCls}
-          style={{ width: 80 }}
+          style={{ width: 120 }}
         >
-          <option value="outcome">Saída</option>
-          <option value="income">Entrada</option>
+          <option value="">Conta</option>
+          {accounts.filter((a) => a.is_active).map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
         </select>
         <select
           value={form.family_id}
@@ -110,7 +108,7 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
             setForm({ ...form, family_id: e.target.value, category_id: "", tag_id: "" })
           }
           className={inputCls}
-          style={{ width: 110 }}
+          style={{ width: 100 }}
         >
           <option value="">Família</option>
           {families.map((f) => (
@@ -123,7 +121,7 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
           value={form.category_id}
           onChange={(e) => setForm({ ...form, category_id: e.target.value, tag_id: "" })}
           className={inputCls}
-          style={{ width: 120 }}
+          style={{ width: 110 }}
         >
           <option value="">Categoria</option>
           {filteredCategories.map((c) => (
@@ -137,7 +135,7 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
           onChange={(e) => setForm({ ...form, tag_id: e.target.value })}
           disabled={!form.category_id}
           className={`${inputCls} disabled:opacity-40`}
-          style={{ width: 120 }}
+          style={{ width: 100 }}
         >
           <option value="">Tag</option>
           {filteredTags.map((t) => (
@@ -152,7 +150,7 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
           value={form.value}
           onChange={(e) => setForm({ ...form, value: e.target.value })}
           className={`${inputCls} text-right`}
-          style={{ width: 100 }}
+          style={{ width: 90 }}
         />
         <select
           value={form.currency}
@@ -164,54 +162,25 @@ export function AddTransactionRow({ families, categories, tags, paymentMethods, 
           <option>USD</option>
           <option>EUR</option>
         </select>
-        {paymentMethods.filter((pm) => pm.is_active).length > 0 && (
-          <select
-            value={form.payment_method_id}
-            onChange={(e) => setForm({ ...form, payment_method_id: e.target.value })}
-            className={inputCls}
-            style={{ width: 130 }}
-          >
-            <option value="">Pagamento</option>
-            {paymentMethods.filter((pm) => pm.is_active).map((pm) => (
-              <option key={pm.id} value={pm.id}>{pm.name}</option>
-            ))}
-          </select>
-        )}
         <input
           type="text"
           placeholder="Symbol"
           value={form.symbol}
           onChange={(e) => setForm({ ...form, symbol: e.target.value })}
           className={inputCls}
-          style={{ width: 72 }}
+          style={{ width: 60 }}
         />
         <input
           type="number"
-          placeholder="Qtd"
-          value={form.quantity}
-          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-          className={`${inputCls} text-right`}
-          style={{ width: 72 }}
-        />
-        <input
-          type="number"
-          placeholder="Index %"
+          placeholder="Taxa"
           value={form.index_rate}
           onChange={(e) => setForm({ ...form, index_rate: e.target.value })}
           className={`${inputCls} text-right`}
-          style={{ width: 80 }}
-        />
-        <input
-          type="text"
-          placeholder="Índice"
-          value={form.index}
-          onChange={(e) => setForm({ ...form, index: e.target.value })}
-          className={inputCls}
-          style={{ width: 72 }}
+          style={{ width: 60 }}
         />
         <button
           type="submit"
-          disabled={saving || !form.tag_id || !form.value}
+          disabled={saving || !form.tag_id || !form.account_id || !form.value}
           className="ml-auto px-4 py-1.5 bg-accent text-background text-xs font-semibold rounded hover:bg-accent/90 disabled:opacity-40 whitespace-nowrap"
         >
           + Adicionar

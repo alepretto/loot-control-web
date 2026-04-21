@@ -9,11 +9,16 @@ export type DisplayCurrency = "BRL" | "USD" | "EUR";
 export interface Settings {
   timezone: string;
   displayCurrency: DisplayCurrency;
+  selectedMonth: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   timezone: "America/Sao_Paulo",
   displayCurrency: "BRL",
+  selectedMonth: (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  })(),
 };
 
 const DEFAULT_RATES: ExchangeRates = { USD: 5.0, EUR: 5.5 };
@@ -21,9 +26,8 @@ const DEFAULT_RATES: ExchangeRates = { USD: 5.0, EUR: 5.5 };
 interface SettingsContextValue extends Settings {
   rates: ExchangeRates;
   updateSettings: (s: Partial<Settings>) => void;
-  /** Convert value FROM fromCurrency INTO the user's displayCurrency */
+  setSelectedMonth: (m: string) => void;
   convertToDisplay: (value: number, fromCurrency: string) => number;
-  /** Format value (convert + locale format) */
   fmtDisplay: (value: number, fromCurrency: string) => string;
 }
 
@@ -31,6 +35,7 @@ const SettingsContext = createContext<SettingsContextValue>({
   ...DEFAULT_SETTINGS,
   rates: DEFAULT_RATES,
   updateSettings: () => {},
+  setSelectedMonth: () => {},
   convertToDisplay: (v) => v,
   fmtDisplay: (v, c) => formatCurrency(v, c as DisplayCurrency),
 });
@@ -60,6 +65,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function setSelectedMonth(month: string) {
+    updateSettings({ selectedMonth: month });
+  }
+
   function convertToDisplay(value: number, fromCurrency: string): number {
     const { displayCurrency } = settings;
     if (fromCurrency === displayCurrency) return value;
@@ -79,7 +88,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SettingsContext.Provider value={{ ...settings, rates, updateSettings, convertToDisplay, fmtDisplay }}>
+    <SettingsContext.Provider value={{ ...settings, rates, updateSettings, setSelectedMonth, convertToDisplay, fmtDisplay }}>
       {children}
     </SettingsContext.Provider>
   );

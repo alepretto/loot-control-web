@@ -177,22 +177,23 @@ export default function SummaryPage() {
     return { tag, cat, familyId: cat?.family_id ?? null };
   }
 
-  // Compute income/outcome/invested totals for any tx list
+  function resolveNature(tx: Transaction) {
+    const tag = tags.find(t => t.id === tx.tag_id);
+    const cat = categories.find(c => c.id === tag?.category_id);
+    const fam = families.find(f => f.id === cat?.family_id);
+    return fam?.nature ?? null;
+  }
+
+  // Compute income/outcome/invested totals for any tx list (V2: uses family.nature)
   function computeTotals(txList: Transaction[]) {
-    const nonInv = txList.filter(tx => !tx.symbol && !tx.index);
-    const income = nonInv
-      .filter(tx => tags.find(t => t.id === tx.tag_id)?.type === "income")
-      .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
-    const outcome = nonInv
-      .filter(tx => tags.find(t => t.id === tx.tag_id)?.type === "outcome")
-      .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
-    const invested = txList
-      .filter(tx => tx.symbol || tx.index)
-      .reduce((s, tx) => {
-        const tag = tags.find(t => t.id === tx.tag_id);
-        const v = convertToDisplay(tx.value, tx.currency);
-        return tag?.type === "outcome" ? s + v : s - v;
-      }, 0);
+    let income = 0, outcome = 0, invested = 0;
+    for (const tx of txList) {
+      const v = convertToDisplay(tx.value, tx.currency);
+      const nature = resolveNature(tx);
+      if (nature === "income") income += v;
+      else if (nature === "fixed_expense" || nature === "variable_expense") outcome += v;
+      else if (nature === "investment" || tx.symbol || tx.index) invested += v;
+    }
     return { income, outcome, invested: Math.max(0, invested) };
   }
 
@@ -221,40 +222,29 @@ export default function SummaryPage() {
     }, 0)) / 3,
   } : null;
 
-  // Family group aggregation
+  // Family group aggregation (expense only — excludes income and investments)
   function buildFamilyMap(txList: Transaction[]): Record<string, number> {
     const map: Record<string, number> = {};
     for (const tx of txList) {
-      if (tx.symbol || tx.index) continue;
-      const { tag, familyId } = resolveFamily(tx);
-      if (tag?.type === "income") continue;
+      const nature = resolveNature(tx);
+      if (nature === "income" || nature === "investment") continue;
+      if (!nature && (tx.symbol || tx.index)) continue;
+      const { familyId } = resolveFamily(tx);
       const key = familyId ?? "__none__";
       map[key] = (map[key] ?? 0) + convertToDisplay(tx.value, tx.currency);
     }
     return map;
   }
 
-  // Payment method sets + filtered base (must be before currByFamily)
-  const moneyPmIds   = useMemo(() => new Set(paymentMethods.filter(pm => pm.category === "money").map(pm => pm.id)),   [paymentMethods]);
-  const benefitPmIds = useMemo(() => new Set(paymentMethods.filter(pm => pm.category === "benefit").map(pm => pm.id)), [paymentMethods]);
-
-  const pmDisplayTxs = useMemo(() => {
-    if (!selectedPaymentMethodId) return transactions;
-    if (selectedPaymentMethodId === "__money__")
-      return transactions.filter(tx => tx.payment_method_id != null && moneyPmIds.has(tx.payment_method_id));
-    if (selectedPaymentMethodId === "__benefit__")
-      return transactions.filter(tx => tx.payment_method_id != null && benefitPmIds.has(tx.payment_method_id));
-    return transactions.filter(tx => tx.payment_method_id === selectedPaymentMethodId);
-  }, [transactions, selectedPaymentMethodId, moneyPmIds, benefitPmIds]);
-
-  const currByFamily = buildFamilyMap(pmDisplayTxs);
+  const currByFamily = buildFamilyMap(transactions);
   const prevByFamily = buildFamilyMap(prevTransactions);
 
   function buildCatBreakdown(txList: Transaction[], familyId: string | null) {
     const map: Record<string, { catId: string; name: string; value: number }> = {};
     for (const tx of txList) {
-      const { tag, cat } = resolveFamily(tx);
-      if (tag?.type === "income") continue;
+      const nature = resolveNature(tx);
+      if (nature === "income" || nature === "investment") continue;
+      const { cat } = resolveFamily(tx);
       if ((cat?.family_id ?? null) !== familyId) continue;
       const catId = cat?.id ?? "__no_cat__";
       if (!map[catId]) map[catId] = { catId, name: cat?.name ?? "—", value: 0 };
@@ -271,15 +261,16 @@ export default function SummaryPage() {
       familyName:        families.find((f) => f.id === familyId)?.name ?? "Sem Família",
       outcome:           currByFamily[key] ?? 0,
       prevOutcome:       prevByFamily[key] ?? 0,
-      categoryBreakdown: buildCatBreakdown(pmDisplayTxs, familyId),
+      categoryBreakdown: buildCatBreakdown(transactions, familyId),
     };
   }).sort((a, b) => b.outcome - a.outcome);
 
   // Income by category
   const incomeByCategory: Record<string, number> = {};
   for (const tx of nonInvestmentTxs) {
-    const { tag, cat } = resolveFamily(tx);
-    if (tag?.type !== "income") continue;
+    const nature = resolveNature(tx);
+    if (nature !== "income") continue;
+    const { cat } = resolveFamily(tx);
     const name = cat?.name ?? "—";
     incomeByCategory[name] = (incomeByCategory[name] ?? 0) + convertToDisplay(tx.value, tx.currency);
   }
@@ -289,17 +280,17 @@ export default function SummaryPage() {
 
   const resolvedSelectedFamilyId = selectedFamilyId === "__none__" ? null : selectedFamilyId;
 
-  // Category bar chart (filtered by selected family)
+  // Category bar chart (filtered by selected family, expense only)
   const categoryBarItems = categories
     .filter(cat => selectedFamilyId === null || cat.family_id === resolvedSelectedFamilyId)
     .map((cat, i) => ({
       id: cat.id,
       name: cat.name,
-      value: pmDisplayTxs
-        .filter(tx => !tx.symbol && !tx.index)
+      value: transactions
         .filter(tx => {
+          const nature = resolveNature(tx);
           const tag = tags.find(t => t.id === tx.tag_id);
-          return tag?.type === "outcome" && tag?.category_id === cat.id;
+          return (nature === "fixed_expense" || nature === "variable_expense") && tag?.category_id === cat.id;
         })
         .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0),
       color: DONUT_COLORS[i % DONUT_COLORS.length],
@@ -324,21 +315,21 @@ export default function SummaryPage() {
     }],
   };
 
-  // Tag bar chart (filtered by selected category and/or family)
+  // Tag bar chart (filtered by selected category and/or family, expense only)
   const tagBarItems = tags
     .filter(t => {
-      if (t.type !== "outcome") return false;
+      const cat = categories.find(c => c.id === t.category_id);
+      const fam = families.find(f => f.id === cat?.family_id);
+      const nature = fam?.nature;
+      if (nature !== "fixed_expense" && nature !== "variable_expense") return false;
       if (selectedCategoryId) return t.category_id === selectedCategoryId;
-      if (selectedFamilyId) {
-        const cat = categories.find(c => c.id === t.category_id);
-        return (cat?.family_id ?? null) === resolvedSelectedFamilyId;
-      }
+      if (selectedFamilyId) return (cat?.family_id ?? null) === resolvedSelectedFamilyId;
       return true;
     })
     .map((tag, i) => ({
       id: tag.id,
       name: tag.name,
-      value: pmDisplayTxs
+      value: transactions
         .filter(tx => !tx.symbol && !tx.index && tx.tag_id === tag.id)
         .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0),
       color: DONUT_COLORS[i % DONUT_COLORS.length],
@@ -559,42 +550,19 @@ export default function SummaryPage() {
     },
   ];
 
-  // ── Payment method breakdown ──────────────────────────────────────────────
-  const paymentBreakdown = (() => {
-    let money = 0, benefit = 0;
-    for (const tx of nonInvestmentTxs) {
-      const tag = tags.find(t => t.id === tx.tag_id);
-      if (tag?.type !== "outcome") continue;
-      const v = convertToDisplay(tx.value, tx.currency);
-      if (tx.payment_method_id && moneyPmIds.has(tx.payment_method_id))   money += v;
-      if (tx.payment_method_id && benefitPmIds.has(tx.payment_method_id)) benefit += v;
-    }
-    return { money, benefit };
-  })();
+  const paymentBreakdown = { debit: 0, benefit: 0 };
+  const hasPaymentMethods = false;
 
-  const hasPaymentMethods = paymentMethods.length > 0;
-
-  // Per-method aggregation (only outcome, only methods with transactions)
-  const paymentMethodItems = paymentMethods
-    .map(pm => {
-      let value = 0;
-      for (const tx of nonInvestmentTxs) {
-        const tag = tags.find(t => t.id === tx.tag_id);
-        if (tag?.type !== "outcome") continue;
-        if (tx.payment_method_id === pm.id) value += convertToDisplay(tx.value, tx.currency);
-      }
-      return { pm, value };
-    })
-    .filter(x => x.value > 0)
-    .sort((a, b) => b.value - a.value);
+  // Payment method breakdown not available (Transaction no longer carries payment_method_id)
+  const paymentMethodItems: { pm: (typeof paymentMethods)[0]; value: number }[] = [];
 
   // Payment type donut (Dinheiro vs Benefício)
   const pmTypeDonutData = {
-    labels: ["Dinheiro", "Benefício"],
+    labels: ["Débito", "Benefício"],
     datasets: [{
-      data: [paymentBreakdown.money, paymentBreakdown.benefit],
+      data: [paymentBreakdown.debit, paymentBreakdown.benefit],
       backgroundColor: [
-        selectedPaymentMethodId === null || selectedPaymentMethodId === "__money__" ? "#2563ebCC" : "#2563eb33",
+        selectedPaymentMethodId === null || selectedPaymentMethodId === "__debit__" ? "#2563ebCC" : "#2563eb33",
         selectedPaymentMethodId === null || selectedPaymentMethodId === "__benefit__" ? "#22c55eCC" : "#22c55e33",
       ],
       borderColor: ["#2563eb", "#22c55e"],
@@ -616,7 +584,7 @@ export default function SummaryPage() {
     },
     onClick: (_evt: unknown, elements: Array<{ index: number }>) => {
       if (!elements.length) { setSelectedPaymentMethodId(null); return; }
-      const types = ["__money__", "__benefit__"] as const;
+      const types = ["__debit__", "__benefit__"] as const;
       const type = types[elements[0].index];
       setSelectedPaymentMethodId(selectedPaymentMethodId === type ? null : type);
     },
@@ -633,14 +601,14 @@ export default function SummaryPage() {
     datasets: [{
       data: paymentMethodItems.map(x => x.value),
       backgroundColor: paymentMethodItems.map(x => {
-        const color = x.pm.category === "money" ? "#2563eb" : "#22c55e";
+        const color = x.pm.type === "debit" ? "#2563eb" : "#22c55e";
         if (selectedPaymentMethodId === null) return color + "CC";
-        if (selectedPaymentMethodId === "__money__" && x.pm.category === "money") return color + "FF";
-        if (selectedPaymentMethodId === "__benefit__" && x.pm.category === "benefit") return color + "FF";
+        if (selectedPaymentMethodId === "__debit__" && x.pm.type === "debit") return color + "FF";
+        if (selectedPaymentMethodId === "__benefit__" && x.pm.type === "benefit") return color + "FF";
         if (selectedPaymentMethodId === x.pm.id) return color + "FF";
         return color + "33";
       }),
-      borderColor: paymentMethodItems.map(x => x.pm.category === "money" ? "#2563eb" : "#22c55e"),
+      borderColor: paymentMethodItems.map(x => x.pm.type === "debit" ? "#2563eb" : "#22c55e"),
       borderWidth: 1,
       borderRadius: 4,
       maxBarThickness: 22,
@@ -749,7 +717,7 @@ export default function SummaryPage() {
           <div className="bg-surface border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs uppercase tracking-wider text-muted">Por Tipo de Pagamento</p>
-              {(selectedPaymentMethodId === "__money__" || selectedPaymentMethodId === "__benefit__") && (
+              {(selectedPaymentMethodId === "__debit__" || selectedPaymentMethodId === "__benefit__") && (
                 <button onClick={() => setSelectedPaymentMethodId(null)} className="text-xs text-muted hover:text-text-primary transition-colors">✕ limpar</button>
               )}
             </div>
@@ -759,16 +727,16 @@ export default function SummaryPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-[9px] uppercase tracking-wider text-muted">Total</span>
                   <span className="text-xs font-bold font-mono text-text-primary mt-0.5">
-                    {formatCurrency(paymentBreakdown.money + paymentBreakdown.benefit, displayCurrency)}
+                    {formatCurrency(paymentBreakdown.debit + paymentBreakdown.benefit, displayCurrency)}
                   </span>
                 </div>
               </div>
               <div className="flex-1 space-y-3">
                 {[
-                  { label: "Dinheiro", value: paymentBreakdown.money, color: "#2563eb", type: "__money__" as const },
+                  { label: "Débito", value: paymentBreakdown.debit, color: "#2563eb", type: "__debit__" as const },
                   { label: "Benefício", value: paymentBreakdown.benefit, color: "#22c55e", type: "__benefit__" as const },
                 ].map(({ label, value, color, type }) => {
-                  const total = paymentBreakdown.money + paymentBreakdown.benefit;
+                  const total = paymentBreakdown.debit + paymentBreakdown.benefit;
                   const pct = total > 0 ? (value / total) * 100 : 0;
                   const isSelected = selectedPaymentMethodId === type;
                   return (
@@ -802,7 +770,7 @@ export default function SummaryPage() {
             <div className="bg-surface border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs uppercase tracking-wider text-muted">Por Método</p>
-                {selectedPaymentMethodId && selectedPaymentMethodId !== "__money__" && selectedPaymentMethodId !== "__benefit__" && (
+                {selectedPaymentMethodId && selectedPaymentMethodId !== "__debit__" && selectedPaymentMethodId !== "__benefit__" && (
                   <button onClick={() => setSelectedPaymentMethodId(null)} className="text-xs text-muted hover:text-text-primary transition-colors">✕ limpar</button>
                 )}
               </div>
@@ -1097,8 +1065,8 @@ export default function SummaryPage() {
                             </div>
                             <div className="space-y-1 pl-2">
                               {catTags.map((tag) => {
-                                const paid = pmDisplayTxs.some((tx) => tx.tag_id === tag.id);
-                                const tagTotal = pmDisplayTxs
+                                const paid = transactions.some((tx) => tx.tag_id === tag.id);
+                                const tagTotal = transactions
                                   .filter((tx) => tx.tag_id === tag.id)
                                   .reduce((s, tx) => s + convertToDisplay(tx.value, tx.currency), 0);
                                 return (

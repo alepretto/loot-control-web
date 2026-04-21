@@ -117,7 +117,7 @@ export default function OnboardingPage() {
     if (!tagName.trim()) return;
     setError(null);
     try {
-      await tagsApi.create({ name: tagName.trim(), category_id: createdCategoryId, type: tagType });
+      await tagsApi.create({ name: tagName.trim(), category_id: createdCategoryId, income_type: tagType === "income" ? "active" : null });
       setCreatedStats({ families: 1, categories: 1, tags: 1 });
       setStep("done");
     } catch (e: unknown) {
@@ -143,7 +143,7 @@ export default function OnboardingPage() {
           cats++;
 
           for (const tagItem of catItem.tags) {
-            await tagsApi.create({ name: tagItem.name, category_id: cat.id, type: tagItem.type });
+            await tagsApi.create({ name: tagItem.name, category_id: cat.id, income_type: tagItem.type === "income" ? "active" : null });
             tags++;
           }
         }

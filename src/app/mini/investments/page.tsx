@@ -5,17 +5,19 @@ import {
   transactionsApi,
   tagsApi,
   categoriesApi,
+  tagFamiliesApi,
   marketDataApi,
   Transaction,
   Tag,
   Category,
+  TagFamily,
   ExchangeRateHistoryItem,
   AssetPriceItem,
   CdiRateItem,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
-// ─── Helpers (same logic as web investments page) ─────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildSortedRates(history: ExchangeRateHistoryItem[]) {
   return [...history].sort((a, b) => a.date.localeCompare(b.date));
@@ -61,6 +63,17 @@ function accumulateFixed(principal: number, annualPct: number, fromDate: string,
   return principal * Math.pow(1 + annualPct / 100, days / 365);
 }
 
+function resolveNature(tx: Transaction, tags: Tag[], categories: Category[], families: TagFamily[]): string | null {
+  const tag = tags.find((t) => t.id === tx.tag_id);
+  if (!tag) return null;
+  const cat = categories.find((c) => c.id === tag.category_id);
+  if (!cat) return null;
+  const fam = families.find((f) => f.id === cat.family_id);
+  return fam?.nature ?? null;
+}
+
+// ─── Data types ───────────────────────────────────────────────────────────────
+
 interface ClosedCycle {
   symbol: string;
   buysTotal: number;
@@ -77,7 +90,6 @@ interface SymbolRow {
   currentPrice: number | null;
   priceCurrency: string;
   closedCycles: ClosedCycle[];
-  // fixed income detail
   details: { date: string; index: string | null; indexRate: number | null; principalBrl: number; currentBrl: number; returnPct: number }[];
 }
 
@@ -90,12 +102,16 @@ interface TagGroup {
   retornoBrl: number;
   retornoPct: number;
   oldestLastUpdate: string | null;
-  allocationPct: number; // filled after all groups are built
+  allocationPct: number;
 }
+
+// ─── Logic ────────────────────────────────────────────────────────────────────
 
 function splitCycles(
   txs: Transaction[],
   tags: Tag[],
+  categories: Category[],
+  families: TagFamily[],
   sortedRates: ExchangeRateHistoryItem[],
 ): { closed: ClosedCycle[]; activeTxs: Transaction[] } {
   const sorted = [...txs].sort((a, b) => a.date_transaction.localeCompare(b.date_transaction));
@@ -103,8 +119,7 @@ function splitCycles(
   let buys = 0, sells = 0, qty = 0, activeStart = 0;
   for (let i = 0; i < sorted.length; i++) {
     const tx = sorted[i];
-    const tag = tags.find((t) => t.id === tx.tag_id);
-    const isIncome = tag?.type === "income";
+    const isIncome = resolveNature(tx, tags, categories, families) === "income";
     const rate = getRateForDate(sortedRates, tx.date_transaction);
     const valBrl = convertToBrl(tx.value, tx.currency, rate);
     if (isIncome) { sells += valBrl; qty -= tx.quantity ?? 0; }
@@ -127,6 +142,7 @@ function buildGroups(
   txs: Transaction[],
   tags: Tag[],
   categories: Category[],
+  families: TagFamily[],
   sortedRates: ExchangeRateHistoryItem[],
   latestPrices: AssetPriceItem[],
   sortedCdi: CdiRateItem[],
@@ -167,11 +183,10 @@ function buildGroups(
         txsBySymbol.get(sym)!.push(tx);
       }
       for (const [sym, symTxs] of txsBySymbol) {
-        const { closed, activeTxs } = splitCycles(symTxs, tags, sortedRates);
+        const { closed, activeTxs } = splitCycles(symTxs, tags, categories, families, sortedRates);
         let aporteBrl = 0, qty = 0;
         for (const tx of activeTxs) {
-          const tag = tags.find((t) => t.id === tx.tag_id);
-          const isIncome = tag?.type === "income";
+          const isIncome = resolveNature(tx, tags, categories, families) === "income";
           const rate = getRateForDate(sortedRates, tx.date_transaction);
           const valBrl = convertToBrl(tx.value, tx.currency, rate);
           if (isIncome) { qty -= tx.quantity ?? 0; aporteBrl -= valBrl; }
@@ -181,8 +196,7 @@ function buildGroups(
       }
     } else {
       for (const tx of tagTxs) {
-        const tag = tags.find((t) => t.id === tx.tag_id);
-        const isIncome = tag?.type === "income";
+        const isIncome = resolveNature(tx, tags, categories, families) === "income";
         const sym = tx.symbol ?? tx.index ?? tagName;
         if (!bySymbol.has(sym))
           bySymbol.set(sym, { aporteBrl: 0, rendimentoBrl: 0, qty: 0, txList: [], closedCycles: [] });
@@ -205,8 +219,7 @@ function buildGroups(
       const details: SymbolRow["details"] = [];
       if (isFixedIncome) {
         for (const tx of agg.txList) {
-          const tag = tags.find((t) => t.id === tx.tag_id);
-          if (tag?.type === "income") continue;
+          if (resolveNature(tx, tags, categories, families) === "income") continue;
           const rate = getRateForDate(sortedRates, tx.date_transaction);
           const princBrl = convertToBrl(tx.value, tx.currency, rate);
           const txDate = tx.date_transaction.slice(0, 10);
@@ -260,7 +273,6 @@ function buildGroups(
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
   });
 
-  // Fill allocation %
   const totalAll = groups.reduce((s, g) => s + (g.totalCarteira || g.totalAporte), 0);
   for (const g of groups) {
     g.allocationPct = totalAll > 0 ? ((g.totalCarteira || g.totalAporte) / totalAll) * 100 : 0;
@@ -293,7 +305,6 @@ function GroupCard({ group }: { group: TagGroup }) {
 
   return (
     <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-      {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px] active:bg-surface-2 transition-colors"
@@ -323,7 +334,6 @@ function GroupCard({ group }: { group: TagGroup }) {
         </div>
       </button>
 
-      {/* Rows */}
       {open && (
         <div className="border-t border-border divide-y divide-border">
           {openRows.map((row) => {
@@ -366,7 +376,6 @@ function GroupCard({ group }: { group: TagGroup }) {
             );
           })}
 
-          {/* Closed positions */}
           {allClosed.length > 0 && (
             <div>
               <button
@@ -402,7 +411,6 @@ function GroupCard({ group }: { group: TagGroup }) {
             </div>
           )}
 
-          {/* Group total */}
           <div className="flex items-center justify-between px-4 py-2 bg-surface-2">
             <span className="text-xs text-muted uppercase font-semibold">Total</span>
             <div className="flex items-center gap-3">
@@ -430,10 +438,11 @@ export default function MiniInvestmentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [txData, tagList, catList, rateHist, pricesRes] = await Promise.all([
+        const [txData, tagList, catList, famList, rateHist, pricesRes] = await Promise.all([
           transactionsApi.list({ page_size: 2000 }),
           tagsApi.list(),
           categoriesApi.list(),
+          tagFamiliesApi.list(),
           marketDataApi.exchangeRateHistory().catch(() => [] as ExchangeRateHistoryItem[]),
           marketDataApi.assetPrices().catch(() => ({ prices: [] as AssetPriceItem[] })),
         ]);
@@ -441,7 +450,6 @@ export default function MiniInvestmentsPage() {
         const investmentTxs = txData.items.filter((tx) => tx.symbol || tx.index);
         const sortedRates = buildSortedRates(rateHist);
 
-        // CDI: from earliest fixed-income tx to today (with 8s timeout)
         let cdiRates: CdiRateItem[] = [];
         const fixedTxs = investmentTxs.filter((tx) => tx.index);
         if (fixedTxs.length > 0) {
@@ -454,7 +462,7 @@ export default function MiniInvestmentsPage() {
           } catch { /* BCB offline — CDI optional */ }
         }
 
-        const built = buildGroups(investmentTxs, tagList, catList, sortedRates, pricesRes.prices, cdiRates);
+        const built = buildGroups(investmentTxs, tagList, catList, famList, sortedRates, pricesRes.prices, cdiRates);
         setGroups(built);
       } catch {
         setError("Erro ao carregar investimentos.");
@@ -474,7 +482,6 @@ export default function MiniInvestmentsPage() {
     <div className="px-4 pt-6 pb-4 space-y-5">
       <h1 className="text-lg font-bold text-text-primary">Investimentos</h1>
 
-      {/* KPI cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-surface border border-border rounded-2xl p-3 space-y-1">
           <p className="text-[10px] uppercase tracking-wider text-muted">Aportado</p>
@@ -496,7 +503,6 @@ export default function MiniInvestmentsPage() {
         </div>
       </div>
 
-      {/* Total result card */}
       {!loading && totalCarteira > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4 flex items-center justify-between">
           <div>

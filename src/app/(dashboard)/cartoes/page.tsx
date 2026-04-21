@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function PaymentMethodsRedirect() {
+export default function CartoesRedirect() {
   redirect("/contas");
 }
