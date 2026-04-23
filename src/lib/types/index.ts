@@ -1,2 +1,2 @@
 export { type AuthUser, type AuthToken, type LoginRequest, type SignupRequest, type ApiError } from './auth';
-export { type Account, type AccountCreate, type AccountUpdate, type AccountType, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS } from './account';
+export { type Account, type AccountCreate, type AccountUpdate, type AccountType, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_ORDER } from './account';

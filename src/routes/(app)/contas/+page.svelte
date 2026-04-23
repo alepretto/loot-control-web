@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getAccounts, createAccount, updateAccount, deleteAccount } from '$lib/api';
-	import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS, type Account, type AccountType } from '$lib/types/account';
+	import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_ORDER, type Account, type AccountType } from '$lib/types/account';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
 	let accounts = $state<Account[]>([]);
@@ -8,7 +9,6 @@
 	let showForm = $state(false);
 	let editingId = $state<string | null>(null);
 
-	// Form state
 	let label = $state('');
 	let type = $state<AccountType>('bank');
 	let logo = $state('');
@@ -77,6 +77,22 @@
 			console.error(e);
 		}
 	}
+
+	function groupByType(): { type: AccountType; accounts: Account[] }[] {
+		const groups = new Map<AccountType, Account[]>();
+		for (const a of accounts) {
+			const list = groups.get(a.type) ?? [];
+			list.push(a);
+			groups.set(a.type, list);
+		}
+		return ACCOUNT_TYPE_ORDER
+			.filter((t) => groups.has(t))
+			.map((t) => ({ type: t, accounts: groups.get(t)! }));
+	}
+
+	function formatDate(iso: string): string {
+		return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
+	}
 </script>
 
 <div class="px-4 md:px-6 py-5 space-y-5">
@@ -101,42 +117,61 @@
 			<p class="text-text-secondary text-sm mt-1">Clique em "Nova conta" para começar</p>
 		</div>
 	{:else}
-		<div class="grid gap-3 animate-stagger">
-			{#each accounts as account (account.id)}
-				<div class="bg-surface border border-border rounded-xl p-4 hover:bg-surface-2/60 transition-colors group">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div
-								class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold"
-								style="background-color: {ACCOUNT_TYPE_COLORS[account.type]}20; color: {ACCOUNT_TYPE_COLORS[account.type]}"
-							>
-								{account.label.charAt(0).toUpperCase()}
-							</div>
-							<div>
-								<p class="text-text-primary font-medium">{account.label}</p>
-								<p class="text-xs text-muted">
-									{ACCOUNT_TYPE_LABELS[account.type]}
-								</p>
-							</div>
-						</div>
-						<div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-							<button
-								onclick={() => openEdit(account)}
-								class="text-muted hover:text-text-primary text-sm px-2 py-1 rounded transition-colors"
-							>
-								Editar
-							</button>
-							<button
-								onclick={() => deletingId = account.id}
-								class="text-muted hover:text-danger text-sm px-2 py-1 rounded transition-colors"
-							>
-								Excluir
-							</button>
-						</div>
-					</div>
+		{#each groupByType() as group (group.type)}
+			<div class="space-y-2">
+				<div class="flex items-center gap-2 px-1">
+					<span class="text-base">{ACCOUNT_TYPE_ICONS[group.type]}</span>
+					<h2 class="text-sm font-semibold text-muted uppercase tracking-wider">{ACCOUNT_TYPE_LABELS[group.type]}</h2>
+					<span class="text-xs text-text-secondary">{group.accounts.length}</span>
 				</div>
-			{/each}
-		</div>
+				<div class="grid gap-2">
+					{#each group.accounts as account (account.id)}
+						<button
+							onclick={() => goto(`/contas/${account.id}`)}
+							class="w-full text-left bg-surface border border-border rounded-xl p-4 hover:bg-surface-2/60 hover:border-border transition-all group cursor-pointer"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-3 min-w-0">
+									<div
+										class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0"
+										style="background-color: {ACCOUNT_TYPE_COLORS[account.type]}15; color: {ACCOUNT_TYPE_COLORS[account.type]}"
+									>
+										{account.label.charAt(0).toUpperCase()}
+									</div>
+									<div class="min-w-0">
+										<p class="text-text-primary font-medium truncate">{account.label}</p>
+										<p class="text-xs text-muted">
+											{ACCOUNT_TYPE_LABELS[account.type]}
+											{#if account.logo}
+												<span class="text-text-secondary">· {account.logo}</span>
+											{/if}
+										</p>
+									</div>
+								</div>
+								<div class="flex items-center gap-3 shrink-0">
+									<span class="text-xs text-text-secondary font-data">{formatDate(account.created_at)}</span>
+									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+										<span
+											onclick={(e: MouseEvent) => { e.stopPropagation(); openEdit(account); }}
+											class="text-muted hover:text-text-primary text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+										>
+											Editar
+										</span>
+										<span
+											onclick={(e: MouseEvent) => { e.stopPropagation(); deletingId = account.id; }}
+											class="text-muted hover:text-danger text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+										>
+											Excluir
+										</span>
+									</div>
+									<span class="text-muted group-hover:text-text-secondary transition-colors">→</span>
+								</div>
+							</div>
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/each}
 	{/if}
 </div>
 

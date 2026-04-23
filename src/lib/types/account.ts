@@ -23,7 +23,7 @@ export interface AccountUpdate {
 }
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-	bank: 'Banco',
+	bank: 'Bancária',
 	wallet: 'Carteira',
 	digital: 'Digital',
 	benefits: 'Benefícios'
@@ -35,3 +35,12 @@ export const ACCOUNT_TYPE_COLORS: Record<AccountType, string> = {
 	digital: '#a855f7',
 	benefits: '#f97316'
 };
+
+export const ACCOUNT_TYPE_ICONS: Record<AccountType, string> = {
+	bank: '🏦',
+	wallet: '👛',
+	digital: '📱',
+	benefits: '🎁'
+};
+
+export const ACCOUNT_TYPE_ORDER: AccountType[] = ['bank', 'digital', 'wallet', 'benefits'];
