@@ -156,4 +156,27 @@ export async function deleteSubcategory(id: string): Promise<void> {
 	await request(`/subcategories/${id}`, { method: 'DELETE' });
 }
 
+// Currencies
+export async function getCurrencies(): Promise<import('$lib/types/currency').Currency[]> {
+	return request<import('$lib/types/currency').Currency[]>('/currencies');
+}
+
+export async function createCurrency(data: import('$lib/types/currency').CurrencyCreate): Promise<import('$lib/types/currency').Currency> {
+	return request<import('$lib/types/currency').Currency>('/currencies', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateCurrency(id: string, data: import('$lib/types/currency').CurrencyUpdate): Promise<import('$lib/types/currency').Currency> {
+	return request<import('$lib/types/currency').Currency>(`/currencies/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteCurrency(id: string): Promise<void> {
+	await request(`/currencies/${id}`, { method: 'DELETE' });
+}
+
 export { getToken, setToken, clearToken };
