@@ -42,6 +42,16 @@
 	let subIsActive = $state(true);
 	let subFormError = $state('');
 	let subDeletingId = $state<string | null>(null);
+	let collapsedSubCategories = $state<Set<string>>(new Set());
+
+	function toggleSubCategoryGroup(categoryId: string) {
+		if (collapsedSubCategories.has(categoryId)) {
+			collapsedSubCategories.delete(categoryId);
+		} else {
+			collapsedSubCategories.add(categoryId);
+		}
+		collapsedSubCategories = new Set(collapsedSubCategories);
+	}
 
 	const tabs: { id: TabId; label: string }[] = [
 		{ id: 'categories', label: 'Categorias' },
@@ -331,7 +341,7 @@
 		{:else}
 			{#each groupByCategory() as group (group.category.id)}
 				<div class="space-y-2">
-					<div class="flex items-center gap-2 px-1">
+					<div class="flex items-center gap-2 px-1 cursor-pointer select-none" onclick={() => toggleSubCategoryGroup(group.category.id)}>
 						<div
 							class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0"
 							style="background-color: {CATEGORY_NATURE_COLORS[group.category.nature]}15; color: {CATEGORY_NATURE_COLORS[group.category.nature]}"
@@ -340,8 +350,10 @@
 						</div>
 						<h2 class="text-sm font-semibold text-muted uppercase tracking-wider">{group.category.label}</h2>
 						<span class="text-xs text-text-secondary">{group.subcategories.length}</span>
+						<span class="text-muted transition-transform duration-200 {collapsedSubCategories.has(group.category.id) ? '-rotate-90' : 'rotate-0'}">▾</span>
 					</div>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+					{#if !collapsedSubCategories.has(group.category.id)}
+						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
 						{#each group.subcategories as sub (sub.id)}
 							<div
 								class="bg-surface border border-border rounded-lg p-3 hover:bg-surface-2/60 transition-all group"
@@ -386,6 +398,7 @@
 							</div>
 						{/each}
 					</div>
+					{/if}
 				</div>
 			{/each}
 		{/if}
