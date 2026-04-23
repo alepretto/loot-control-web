@@ -7,7 +7,11 @@
 		getSubcategories,
 		createSubcategory,
 		updateSubcategory,
-		deleteSubcategory
+		deleteSubcategory,
+		getCurrencies,
+		createCurrency,
+		updateCurrency,
+		deleteCurrency
 	} from '$lib/api';
 	import {
 		CATEGORY_NATURE_LABELS,
@@ -18,6 +22,7 @@
 		type CategoryNature
 	} from '$lib/types/category';
 	import type { Subcategory } from '$lib/types/subcategory';
+	import type { Currency } from '$lib/types/currency';
 	import { onMount } from 'svelte';
 
 	type TabId = 'categories' | 'subcategories' | 'currencies';
@@ -43,6 +48,15 @@
 	let subFormError = $state('');
 	let subDeletingId = $state<string | null>(null);
 	let collapsedSubCategories = $state<Set<string>>(new Set());
+
+	// Currency state
+	let currencies = $state<Currency[]>([]);
+	let showCurForm = $state(false);
+	let curEditingId = $state<string | null>(null);
+	let curLabel = $state('');
+	let curSymbol = $state('');
+	let curFormError = $state('');
+	let curDeletingId = $state<string | null>(null);
 
 	function toggleSubCategoryGroup(categoryId: string) {
 		if (collapsedSubCategories.has(categoryId)) {
@@ -216,6 +230,64 @@
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
 	}
+
+	// Currency functions
+	async function loadCurrencies() {
+		try {
+			currencies = await getCurrencies();
+		} catch (e: any) {
+			console.error(e);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function resetCurForm() {
+		curLabel = '';
+		curSymbol = '';
+		curFormError = '';
+		curEditingId = null;
+	}
+
+	function openCurCreate() {
+		resetCurForm();
+		showCurForm = true;
+	}
+
+	function openCurEdit(currency: Currency) {
+		curLabel = currency.label;
+		curSymbol = currency.symbol;
+		curEditingId = currency.id;
+		showCurForm = true;
+	}
+
+	async function handleCurSubmit(e: Event) {
+		e.preventDefault();
+		curFormError = '';
+
+		try {
+			if (curEditingId) {
+				await updateCurrency(curEditingId, { label: curLabel, symbol: curSymbol });
+			} else {
+				await createCurrency({ label: curLabel, symbol: curSymbol });
+			}
+			showCurForm = false;
+			resetCurForm();
+			await loadCurrencies();
+		} catch (e: any) {
+			curFormError = e.message || 'Erro ao salvar';
+		}
+	}
+
+	async function handleCurDelete(id: string) {
+		try {
+			await deleteCurrency(id);
+			curDeletingId = null;
+			await loadCurrencies();
+		} catch (e: any) {
+			console.error(e);
+		}
+	}
 </script>
 
 <div class="px-4 md:px-6 py-5 space-y-5">
@@ -238,6 +310,13 @@
 			>
 				+ Nova subcategoria
 			</button>
+		{:else if activeTab === 'currencies'}
+			<button
+				onclick={openCurCreate}
+				class="bg-primary hover:bg-primary-hover text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+			>
+				+ Nova moeda
+			</button>
 		{/if}
 	</div>
 
@@ -250,6 +329,7 @@
 					loading = true;
 					if (tab.id === 'categories') loadCategories();
 					else if (tab.id === 'subcategories') loadSubcategories();
+					else if (tab.id === 'currencies') loadCurrencies();
 					else loading = false;
 				}}
 				class="flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors {activeTab === tab.id ? 'bg-primary/10 text-primary' : 'text-muted hover:text-text-primary hover:bg-surface-2'}"
@@ -403,10 +483,57 @@
 			{/each}
 		{/if}
 	{:else if activeTab === 'currencies'}
-		<div class="bg-surface border border-border rounded-xl p-8 text-center animate-fade-up">
-			<p class="text-muted">Moedas em breve</p>
-			<p class="text-text-secondary text-sm mt-1">Esta seção estará disponível em uma futura atualização.</p>
-		</div>
+		{#if loading}
+			<div class="text-muted text-sm animate-fade-in">Carregando...</div>
+		{:else if currencies.length === 0}
+			<div class="bg-surface border border-border rounded-xl p-8 text-center animate-fade-up">
+				<p class="text-muted">Nenhuma moeda cadastrada</p>
+				<p class="text-text-secondary text-sm mt-1">Clique em "Nova moeda" para começar</p>
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+				{#each currencies as currency (currency.id)}
+					<div
+						class="bg-surface border border-border rounded-lg p-3 hover:bg-surface-2/60 transition-all group"
+					>
+						<div class="flex items-center gap-2.5 mb-2">
+							<div
+								class="w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold shrink-0 bg-primary/10 text-primary"
+							>
+								{currency.symbol}
+							</div>
+							<div class="min-w-0 flex-1">
+								<p class="text-text-primary font-medium text-sm truncate">{currency.label}</p>
+							</div>
+							<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+								<span
+									onclick={() => openCurEdit(currency)}
+									class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+								>
+									Editar
+								</span>
+								<span
+									onclick={() => curDeletingId = currency.id}
+									class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+								>
+									Excluir
+								</span>
+							</div>
+						</div>
+						<div class="space-y-1.5">
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="text-text-secondary">Criada</span>
+								<span class="text-text-primary font-data">{formatDate(currency.created_at)}</span>
+							</div>
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="text-text-secondary">Atualizada</span>
+								<span class="text-text-primary font-data">{formatDate(currency.updated_at)}</span>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -589,6 +716,95 @@
 				</button>
 				<button
 					onclick={() => subDeletingId = null}
+					class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+				>
+					Cancelar
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Currency Create/Edit Modal -->
+{#if showCurForm}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showCurForm = false; resetCurForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showCurForm = false; resetCurForm(); } }} role="presentation">
+		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<h2 class="text-lg font-bold text-text-primary mb-4">
+				{curEditingId ? 'Editar moeda' : 'Nova moeda'}
+			</h2>
+
+			{#if curFormError}
+				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
+					{curFormError}
+				</div>
+			{/if}
+
+			<form onsubmit={handleCurSubmit} class="space-y-4">
+				<div>
+					<label for="cur-label" class="block text-sm text-muted mb-1">Nome da moeda</label>
+					<input
+						id="cur-label"
+						type="text"
+						bind:value={curLabel}
+						required
+						minlength={1}
+						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+						placeholder="Real Brasileiro"
+					/>
+				</div>
+
+				<div>
+					<label for="cur-symbol" class="block text-sm text-muted mb-1">Símbolo</label>
+					<input
+						id="cur-symbol"
+						type="text"
+						bind:value={curSymbol}
+						required
+						minlength={1}
+						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+						placeholder="R$"
+					/>
+				</div>
+
+				<div class="flex gap-3 pt-2">
+					<button
+						type="submit"
+						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2 text-sm font-medium transition-colors"
+					>
+						{curEditingId ? 'Salvar' : 'Criar'}
+					</button>
+					<button
+						type="button"
+						onclick={() => { showCurForm = false; resetCurForm(); }}
+						class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+					>
+						Cancelar
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Currency Delete Confirmation Modal -->
+{#if curDeletingId}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => curDeletingId = null} onkeydown={(e) => { if (e.key === 'Escape') curDeletingId = null; }} role="presentation">
+		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir moeda</h2>
+			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => handleCurDelete(curDeletingId!)}
+					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2 text-sm font-medium hover:bg-danger/25 transition-colors"
+				>
+					Excluir
+				</button>
+				<button
+					onclick={() => curDeletingId = null}
 					class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
 				>
 					Cancelar
