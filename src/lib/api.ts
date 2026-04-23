@@ -133,4 +133,27 @@ export async function deleteCategory(id: string): Promise<void> {
 	await request(`/categories/${id}`, { method: 'DELETE' });
 }
 
+// Subcategories
+export async function getSubcategories(): Promise<import('$lib/types/subcategory').Subcategory[]> {
+	return request<import('$lib/types/subcategory').Subcategory[]>('/subcategories');
+}
+
+export async function createSubcategory(data: import('$lib/types/subcategory').SubcategoryCreate): Promise<import('$lib/types/subcategory').Subcategory> {
+	return request<import('$lib/types/subcategory').Subcategory>('/subcategories', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateSubcategory(id: string, data: import('$lib/types/subcategory').SubcategoryUpdate): Promise<import('$lib/types/subcategory').Subcategory> {
+	return request<import('$lib/types/subcategory').Subcategory>(`/subcategories/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteSubcategory(id: string): Promise<void> {
+	await request(`/subcategories/${id}`, { method: 'DELETE' });
+}
+
 export { getToken, setToken, clearToken };
