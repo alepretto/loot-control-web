@@ -19,7 +19,7 @@
 
 	const manageNav = [
 		{ href: '/recorrencias', label: 'Recorrências', icon: '↻' },
-		{ href: '/tags', label: 'Tags', icon: '⚐' },
+		{ href: '/dados', label: 'Dados', icon: '⚐' },
 		{ href: '/orcamentos', label: 'Orçamentos', icon: '◎' },
 		{ href: '/passivos', label: 'Passivos', icon: '↘' },
 		{ href: '/configuracoes', label: 'Configurações', icon: '⚙' },
