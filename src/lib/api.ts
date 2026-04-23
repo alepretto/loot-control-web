@@ -110,4 +110,27 @@ export async function deleteAccount(id: string): Promise<void> {
 	await request(`/accounts/${id}`, { method: 'DELETE' });
 }
 
+// Categories
+export async function getCategories(): Promise<import('$lib/types/category').Category[]> {
+	return request<import('$lib/types/category').Category[]>('/categories');
+}
+
+export async function createCategory(data: import('$lib/types/category').CategoryCreate): Promise<import('$lib/types/category').Category> {
+	return request<import('$lib/types/category').Category>('/categories', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateCategory(id: string, data: import('$lib/types/category').CategoryUpdate): Promise<import('$lib/types/category').Category> {
+	return request<import('$lib/types/category').Category>(`/categories/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+	await request(`/categories/${id}`, { method: 'DELETE' });
+}
+
 export { getToken, setToken, clearToken };
