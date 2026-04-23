@@ -124,47 +124,60 @@
 					<h2 class="text-sm font-semibold text-muted uppercase tracking-wider">{ACCOUNT_TYPE_LABELS[group.type]}</h2>
 					<span class="text-xs text-text-secondary">{group.accounts.length}</span>
 				</div>
-				<div class="grid gap-2">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
 					{#each group.accounts as account (account.id)}
 						<button
 							onclick={() => goto(`/contas/${account.id}`)}
-							class="w-full text-left bg-surface border border-border rounded-xl p-4 hover:bg-surface-2/60 hover:border-border transition-all group cursor-pointer"
+							class="w-full text-left bg-surface border border-border rounded-lg p-3 hover:bg-surface-2/60 transition-all group cursor-pointer"
 						>
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-3 min-w-0">
-									<div
-										class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0"
+							<div class="flex items-center gap-2.5 mb-2">
+								<div
+									class="w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold shrink-0"
+									style="background-color: {ACCOUNT_TYPE_COLORS[account.type]}15; color: {ACCOUNT_TYPE_COLORS[account.type]}"
+								>
+									{account.label.charAt(0).toUpperCase()}
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-text-primary font-medium text-sm truncate">{account.label}</p>
+								</div>
+								<span class="text-muted group-hover:text-text-secondary transition-colors text-xs">→</span>
+							</div>
+							<div class="space-y-1.5">
+								<div class="flex items-center justify-between">
+									<span
+										class="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded"
 										style="background-color: {ACCOUNT_TYPE_COLORS[account.type]}15; color: {ACCOUNT_TYPE_COLORS[account.type]}"
 									>
-										{account.label.charAt(0).toUpperCase()}
-									</div>
-									<div class="min-w-0">
-										<p class="text-text-primary font-medium truncate">{account.label}</p>
-										<p class="text-xs text-muted">
-											{ACCOUNT_TYPE_LABELS[account.type]}
-											{#if account.logo}
-												<span class="text-text-secondary">· {account.logo}</span>
-											{/if}
-										</p>
-									</div>
-								</div>
-								<div class="flex items-center gap-3 shrink-0">
-									<span class="text-xs text-text-secondary font-data">{formatDate(account.created_at)}</span>
+										{ACCOUNT_TYPE_ICONS[account.type]} {ACCOUNT_TYPE_LABELS[account.type]}
+									</span>
 									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 										<span
 											onclick={(e: MouseEvent) => { e.stopPropagation(); openEdit(account); }}
-											class="text-muted hover:text-text-primary text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+											class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Editar
 										</span>
 										<span
 											onclick={(e: MouseEvent) => { e.stopPropagation(); deletingId = account.id; }}
-											class="text-muted hover:text-danger text-xs px-2 py-1 rounded transition-colors cursor-pointer"
+											class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Excluir
 										</span>
 									</div>
-									<span class="text-muted group-hover:text-text-secondary transition-colors">→</span>
+								</div>
+								{#if account.logo}
+									<div class="flex items-center justify-between text-[11px]">
+										<span class="text-text-secondary">Logo</span>
+										<span class="text-text-primary truncate ml-2 max-w-[60%]">{account.logo}</span>
+									</div>
+								{/if}
+								<div class="flex items-center justify-between text-[11px]">
+									<span class="text-text-secondary">Criada</span>
+									<span class="text-text-primary font-data">{formatDate(account.created_at)}</span>
+								</div>
+								<div class="flex items-center justify-between text-[11px]">
+									<span class="text-text-secondary">Atualizada</span>
+									<span class="text-text-primary font-data">{formatDate(account.updated_at)}</span>
 								</div>
 							</div>
 						</button>
