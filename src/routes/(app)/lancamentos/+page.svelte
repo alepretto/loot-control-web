@@ -487,8 +487,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 			<form onsubmit={handleSubmit} class="space-y-4">
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label class="block text-sm text-muted mb-1">Tipo</label>
+						<label for="tx-type" class="block text-sm text-muted mb-1">Tipo</label>
 						<select
+							id="tx-type"
 							bind:value={formType}
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
 						>
@@ -497,8 +498,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-muted mb-1">Valor</label>
+						<label for="tx-amount" class="block text-sm text-muted mb-1">Valor</label>
 						<input
+							id="tx-amount"
 							type="text"
 							inputmode="decimal"
 							bind:value={formAmount}
@@ -509,8 +511,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</div>
 
 				<div>
-					<label class="block text-sm text-muted mb-1">Descrição</label>
+					<label for="tx-description" class="block text-sm text-muted mb-1">Descrição</label>
 					<input
+						id="tx-description"
 						type="text"
 						bind:value={formDescription}
 						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -519,8 +522,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</div>
 
 				<div>
-					<label class="block text-sm text-muted mb-1">Data</label>
+					<label for="tx-date" class="block text-sm text-muted mb-1">Data</label>
 					<input
+						id="tx-date"
 						type="datetime-local"
 						bind:value={formDate}
 						required
@@ -530,8 +534,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label class="block text-sm text-muted mb-1">Categoria</label>
+						<label for="tx-category" class="block text-sm text-muted mb-1">Categoria</label>
 						<select
+							id="tx-category"
 							bind:value={formCategoryId}
 							onchange={() => { formSubcategoryId = ''; }}
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -543,8 +548,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-muted mb-1">Subcategoria</label>
+						<label for="tx-subcategory" class="block text-sm text-muted mb-1">Subcategoria</label>
 						<select
+							id="tx-subcategory"
 							bind:value={formSubcategoryId}
 							required
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -559,8 +565,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label class="block text-sm text-muted mb-1">Conta</label>
+						<label for="tx-account" class="block text-sm text-muted mb-1">Conta</label>
 						<select
+							id="tx-account"
 							bind:value={formAccountId}
 							required
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -571,8 +578,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-muted mb-1">Moeda</label>
+						<label for="tx-currency" class="block text-sm text-muted mb-1">Moeda</label>
 						<select
+							id="tx-currency"
 							bind:value={formCurrencyId}
 							required
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -585,8 +593,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</div>
 
 				<div>
-					<label class="block text-sm text-muted mb-1">Método de pagamento</label>
+					<label for="tx-payment" class="block text-sm text-muted mb-1">Método de pagamento</label>
 					<select
+						id="tx-payment"
 						bind:value={formPaymentMethod}
 						onchange={() => { if (formPaymentMethod !== 'credit') formCreditCardId = ''; }}
 						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
@@ -600,8 +609,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 
 				{#if formPaymentMethod === 'credit'}
 					<div>
-						<label class="block text-sm text-muted mb-1">Cartão</label>
+						<label for="tx-card" class="block text-sm text-muted mb-1">Cartão</label>
 						<select
+							id="tx-card"
 							bind:value={formCreditCardId}
 							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
 						>

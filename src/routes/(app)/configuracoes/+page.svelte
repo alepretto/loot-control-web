@@ -64,9 +64,10 @@
 			<h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Preferências</h2>
 			<div class="space-y-4">
 				<div>
-					<label class="block text-sm text-muted mb-1">Fuso horário</label>
+					<label for="tz-select" class="block text-sm text-muted mb-1">Fuso horário</label>
 					<div class="flex gap-3">
 						<select
+							id="tz-select"
 							bind:value={selectedTimezone}
 							class="flex-1 bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
 						>
