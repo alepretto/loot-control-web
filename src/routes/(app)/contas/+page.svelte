@@ -153,12 +153,18 @@
 									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 										<span
 											onclick={(e: MouseEvent) => { e.stopPropagation(); openEdit(account); }}
+											onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); openEdit(account); } }}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Editar
 										</span>
 										<span
 											onclick={(e: MouseEvent) => { e.stopPropagation(); deletingId = account.id; }}
+											onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); deletingId = account.id; } }}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Excluir

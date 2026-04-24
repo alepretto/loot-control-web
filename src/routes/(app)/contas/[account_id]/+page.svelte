@@ -400,14 +400,17 @@
 
 		<!-- Create Card Modal -->
 		{#if showCreateModal}
-			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showCreateModal = false}>
+			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showCreateModal = false} onkeydown={(e) => e.key === 'Escape' && (showCreateModal = false)} role="button" tabindex="0">
 				<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()}>
+				<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
 					<h3 class="text-lg font-semibold text-text-primary">Novo Cartão</h3>
 					<div class="space-y-3">
 						<div>
-							<label class="text-xs text-muted block mb-1">Nome</label>
+							<label for="card-create-name" class="text-xs text-muted block mb-1">Nome</label>
 							<input
+								id="card-create-name"
 								type="text"
 								bind:value={formLabel}
 								class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-primary"
@@ -416,8 +419,9 @@
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<div>
-								<label class="text-xs text-muted block mb-1">Dia vencimento</label>
+								<label for="card-create-due" class="text-xs text-muted block mb-1">Dia vencimento</label>
 								<input
+									id="card-create-due"
 									type="number"
 									bind:value={formDueDate}
 									min="1"
@@ -426,8 +430,9 @@
 								/>
 							</div>
 							<div>
-								<label class="text-xs text-muted block mb-1">Offset (dias)</label>
+								<label for="card-create-offset" class="text-xs text-muted block mb-1">Offset (dias)</label>
 								<input
+									id="card-create-offset"
 									type="number"
 									bind:value={formEndDateOffset}
 									min="1"
@@ -462,14 +467,17 @@
 
 		<!-- Edit Card Modal -->
 		{#if showEditModal}
-			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showEditModal = false}>
+			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showEditModal = false} onkeydown={(e) => e.key === 'Escape' && (showEditModal = false)} role="button" tabindex="0">
 				<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()}>
+				<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
 					<h3 class="text-lg font-semibold text-text-primary">Editar Cartão</h3>
 					<div class="space-y-3">
 						<div>
-							<label class="text-xs text-muted block mb-1">Nome</label>
+							<label for="card-edit-name" class="text-xs text-muted block mb-1">Nome</label>
 							<input
+								id="card-edit-name"
 								type="text"
 								bind:value={formLabel}
 								class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-primary"
@@ -477,8 +485,9 @@
 						</div>
 						<div class="grid grid-cols-2 gap-3">
 							<div>
-								<label class="text-xs text-muted block mb-1">Dia vencimento</label>
+								<label for="card-edit-due" class="text-xs text-muted block mb-1">Dia vencimento</label>
 								<input
+									id="card-edit-due"
 									type="number"
 									bind:value={formDueDate}
 									min="1"
@@ -487,8 +496,9 @@
 								/>
 							</div>
 							<div>
-								<label class="text-xs text-muted block mb-1">Offset (dias)</label>
+								<label for="card-edit-offset" class="text-xs text-muted block mb-1">Offset (dias)</label>
 								<input
+									id="card-edit-offset"
 									type="number"
 									bind:value={formEndDateOffset}
 									min="1"
@@ -523,9 +533,11 @@
 
 		<!-- Delete Confirmation Modal -->
 		{#if showDeleteConfirm}
-			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showDeleteConfirm = null}>
+			<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+			<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => showDeleteConfirm = null} onkeydown={(e) => e.key === 'Escape' && (showDeleteConfirm = null)} role="button" tabindex="0">
 				<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()}>
+				<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+				<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
 					<h3 class="text-lg font-semibold text-danger">Excluir Cartão</h3>
 					<p class="text-sm text-text-secondary">Tem certeza que deseja excluir este cartão? Esta ação não pode ser desfeita.</p>
 					<div class="flex gap-2 justify-end pt-2">

@@ -374,12 +374,18 @@
 									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 										<span
 											onclick={() => openEdit(category)}
+											onkeydown={(e) => e.key === 'Enter' && openEdit(category)}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Editar
 										</span>
 										<span
 											onclick={() => deletingId = category.id}
+											onkeydown={(e) => e.key === 'Enter' && (deletingId = category.id)}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Excluir
@@ -421,7 +427,7 @@
 		{:else}
 			{#each groupByCategory() as group (group.category.id)}
 				<div class="space-y-2">
-					<div class="flex items-center gap-2 px-1 cursor-pointer select-none" onclick={() => toggleSubCategoryGroup(group.category.id)}>
+					<div class="flex items-center gap-2 px-1 cursor-pointer select-none" onclick={() => toggleSubCategoryGroup(group.category.id)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleSubCategoryGroup(group.category.id)}>
 						<div
 							class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0"
 							style="background-color: {CATEGORY_NATURE_COLORS[group.category.nature]}15; color: {CATEGORY_NATURE_COLORS[group.category.nature]}"
@@ -445,12 +451,18 @@
 									<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 										<span
 											onclick={() => openSubEdit(sub)}
+											onkeydown={(e) => e.key === 'Enter' && openSubEdit(sub)}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Editar
 										</span>
 										<span
 											onclick={() => subDeletingId = sub.id}
+											onkeydown={(e) => e.key === 'Enter' && (subDeletingId = sub.id)}
+											role="button"
+											tabindex="0"
 											class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 										>
 											Excluir
@@ -508,12 +520,18 @@
 							<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 								<span
 									onclick={() => openCurEdit(currency)}
+									onkeydown={(e) => e.key === 'Enter' && openCurEdit(currency)}
+									role="button"
+									tabindex="0"
 									class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 								>
 									Editar
 								</span>
 								<span
 									onclick={() => curDeletingId = currency.id}
+									onkeydown={(e) => e.key === 'Enter' && (curDeletingId = currency.id)}
+									role="button"
+									tabindex="0"
 									class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer"
 								>
 									Excluir
