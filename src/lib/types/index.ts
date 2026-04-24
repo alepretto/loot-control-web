@@ -3,3 +3,6 @@ export { type Account, type AccountCreate, type AccountUpdate, type AccountType,
 export { type Category, type CategoryCreate, type CategoryUpdate, type CategoryNature, CATEGORY_NATURE_LABELS, CATEGORY_NATURE_COLORS, CATEGORY_NATURE_ICONS, CATEGORY_NATURE_ORDER } from './category';
 export { type Subcategory, type SubcategoryCreate, type SubcategoryUpdate } from './subcategory';
 export { type Currency, type CurrencyCreate, type CurrencyUpdate } from './currency';
+export { type CreditCard, type CreditCardCreate, type CreditCardUpdate } from './credit_card';
+export { type CreditCardStatement, type CreditCardStatementCreate, type CreditCardStatementUpdate } from './credit_card_statement';
+export { type Transaction, type TransactionCreate, type TransactionUpdate, type TransactionType, type PaymentMethod, TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_COLORS, PAYMENT_METHOD_LABELS } from './transaction';

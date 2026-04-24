@@ -179,4 +179,85 @@ export async function deleteCurrency(id: string): Promise<void> {
 	await request(`/currencies/${id}`, { method: 'DELETE' });
 }
 
+// Credit Cards
+export async function getCreditCards(): Promise<import('$lib/types/credit_card').CreditCard[]> {
+	return request<import('$lib/types/credit_card').CreditCard[]>('/credit-cards');
+}
+
+export async function getCreditCard(id: string): Promise<import('$lib/types/credit_card').CreditCard> {
+	return request<import('$lib/types/credit_card').CreditCard>(`/credit-cards/${id}`);
+}
+
+export async function createCreditCard(data: import('$lib/types/credit_card').CreditCardCreate): Promise<import('$lib/types/credit_card').CreditCard> {
+	return request<import('$lib/types/credit_card').CreditCard>('/credit-cards', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateCreditCard(id: string, data: import('$lib/types/credit_card').CreditCardUpdate): Promise<import('$lib/types/credit_card').CreditCard> {
+	return request<import('$lib/types/credit_card').CreditCard>(`/credit-cards/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteCreditCard(id: string): Promise<void> {
+	await request(`/credit-cards/${id}`, { method: 'DELETE' });
+}
+
+// Credit Card Statements
+export async function getCreditCardStatements(): Promise<import('$lib/types/credit_card_statement').CreditCardStatement[]> {
+	return request<import('$lib/types/credit_card_statement').CreditCardStatement[]>('/credit-card-statements');
+}
+
+export async function getCreditCardStatement(id: string): Promise<import('$lib/types/credit_card_statement').CreditCardStatement> {
+	return request<import('$lib/types/credit_card_statement').CreditCardStatement>(`/credit-card-statements/${id}`);
+}
+
+export async function createCreditCardStatement(data: import('$lib/types/credit_card_statement').CreditCardStatementCreate): Promise<import('$lib/types/credit_card_statement').CreditCardStatement> {
+	return request<import('$lib/types/credit_card_statement').CreditCardStatement>('/credit-card-statements', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateCreditCardStatement(id: string, data: import('$lib/types/credit_card_statement').CreditCardStatementUpdate): Promise<import('$lib/types/credit_card_statement').CreditCardStatement> {
+	return request<import('$lib/types/credit_card_statement').CreditCardStatement>(`/credit-card-statements/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteCreditCardStatement(id: string): Promise<void> {
+	await request(`/credit-card-statements/${id}`, { method: 'DELETE' });
+}
+
+// Transactions
+export async function getTransactions(): Promise<import('$lib/types/transaction').Transaction[]> {
+	return request<import('$lib/types/transaction').Transaction[]>('/transactions');
+}
+
+export async function getTransaction(id: string): Promise<import('$lib/types/transaction').Transaction> {
+	return request<import('$lib/types/transaction').Transaction>(`/transactions/${id}`);
+}
+
+export async function createTransaction(data: import('$lib/types/transaction').TransactionCreate): Promise<import('$lib/types/transaction').Transaction> {
+	return request<import('$lib/types/transaction').Transaction>('/transactions', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateTransaction(id: string, data: import('$lib/types/transaction').TransactionUpdate): Promise<import('$lib/types/transaction').Transaction> {
+	return request<import('$lib/types/transaction').Transaction>(`/transactions/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+	await request(`/transactions/${id}`, { method: 'DELETE' });
+}
+
 export { getToken, setToken, clearToken };
