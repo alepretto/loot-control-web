@@ -268,4 +268,87 @@ export async function deleteTransaction(id: string): Promise<void> {
 	await request(`/transactions/${id}`, { method: 'DELETE' });
 }
 
+// Investments
+export async function getInvestments(): Promise<import('$lib/types/investment').Investment[]> {
+	return request<import('$lib/types/investment').Investment[]>('/investments');
+}
+
+export async function getInvestment(id: string): Promise<import('$lib/types/investment').Investment> {
+	return request<import('$lib/types/investment').Investment>(`/investments/${id}`);
+}
+
+export async function createInvestment(data: import('$lib/types/investment').InvestmentCreate): Promise<import('$lib/types/investment').Investment> {
+	return request<import('$lib/types/investment').Investment>('/investments', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function updateInvestment(id: string, data: import('$lib/types/investment').InvestmentUpdate): Promise<import('$lib/types/investment').Investment> {
+	return request<import('$lib/types/investment').Investment>(`/investments/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+export async function deleteInvestment(id: string): Promise<void> {
+	await request(`/investments/${id}`, { method: 'DELETE' });
+}
+
+// Portfolio
+export async function getPortfolio(): Promise<import('$lib/types/investment').PortfolioSummary> {
+	return request<import('$lib/types/investment').PortfolioSummary>('/investments/portfolio');
+}
+
+export async function getPortfolioTimeline(start_date?: string, end_date?: string): Promise<import('$lib/types/investment').TimelineEntry[]> {
+	let path = '/investments/portfolio/timeline';
+	const params: string[] = [];
+	if (start_date) params.push(`start_date=${encodeURIComponent(start_date)}`);
+	if (end_date) params.push(`end_date=${encodeURIComponent(end_date)}`);
+	if (params.length) path += '?' + params.join('&');
+	return request<import('$lib/types/investment').TimelineEntry[]>(path);
+}
+
+// Asset Prices
+export async function getAssetPrices(symbol?: string): Promise<import('$lib/types/asset_price').AssetPrice[]> {
+	let path = '/asset-prices';
+	if (symbol) path += `?symbol=${encodeURIComponent(symbol)}`;
+	return request<import('$lib/types/asset_price').AssetPrice[]>(path);
+}
+
+export async function getLatestAssetPrice(symbol: string): Promise<import('$lib/types/asset_price').AssetPrice> {
+	return request<import('$lib/types/asset_price').AssetPrice>(`/asset-prices/latest?symbol=${encodeURIComponent(symbol)}`);
+}
+
+export async function createAssetPrice(data: import('$lib/types/asset_price').AssetPriceCreate): Promise<import('$lib/types/asset_price').AssetPrice> {
+	return request<import('$lib/types/asset_price').AssetPrice>('/asset-prices', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
+// Exchange Rates
+export async function getExchangeRates(from_currency?: string, to_currency?: string): Promise<import('$lib/types/exchange_rate').ExchangeRate[]> {
+	const params: string[] = [];
+	if (from_currency) params.push(`from_currency=${encodeURIComponent(from_currency)}`);
+	if (to_currency) params.push(`to_currency=${encodeURIComponent(to_currency)}`);
+	const path = '/exchange-rates' + (params.length ? '?' + params.join('&') : '');
+	return request<import('$lib/types/exchange_rate').ExchangeRate[]>(path);
+}
+
+export async function getLatestExchangeRate(from_currency: string, to_currency: string = 'BRL'): Promise<import('$lib/types/exchange_rate').ExchangeRate> {
+	return request<import('$lib/types/exchange_rate').ExchangeRate>(`/exchange-rates/latest?from_currency=${encodeURIComponent(from_currency)}&to_currency=${encodeURIComponent(to_currency)}`);
+}
+
+export async function getExchangeRateOnDate(from_currency: string, to_currency: string, date: string): Promise<import('$lib/types/exchange_rate').ExchangeRate> {
+	return request<import('$lib/types/exchange_rate').ExchangeRate>(`/exchange-rates/on-date?from_currency=${encodeURIComponent(from_currency)}&to_currency=${encodeURIComponent(to_currency)}&date=${encodeURIComponent(date)}`);
+}
+
+export async function createExchangeRate(data: import('$lib/types/exchange_rate').ExchangeRateCreate): Promise<import('$lib/types/exchange_rate').ExchangeRate> {
+	return request<import('$lib/types/exchange_rate').ExchangeRate>('/exchange-rates', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
 export { getToken, setToken, clearToken };
