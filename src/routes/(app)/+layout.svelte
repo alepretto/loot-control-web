@@ -36,11 +36,11 @@
 </script>
 
 {#if loading}
-	<div class="flex items-center justify-center h-screen bg-background">
+	<div class="flex items-center justify-center h-screen bg-dot-grid">
 		<div class="animate-fade-in text-muted">Carregando...</div>
 	</div>
 {:else if $isAuthenticated}
-	<div class="flex h-screen bg-background">
+	<div class="flex h-screen bg-dot-grid">
 		<!-- Sidebar -->
 		<aside class="hidden md:flex flex-col w-56 bg-surface border-r border-border shrink-0">
 			<div class="p-4 pb-2">
@@ -96,7 +96,7 @@
 		</main>
 	</div>
 {:else}
-	<div class="flex items-center justify-center h-screen bg-background">
+	<div class="flex items-center justify-center h-screen bg-dot-grid">
 		<div class="animate-fade-in text-muted">Redirecionando...</div>
 	</div>
 {/if}

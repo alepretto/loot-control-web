@@ -36,6 +36,10 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: 15px;
+}
+
+.bg-dot-grid {
+  background-color: var(--color-background);
   background-image: radial-gradient(
     circle at 1px 1px,
     rgba(32, 40, 47, 0.55) 1px,

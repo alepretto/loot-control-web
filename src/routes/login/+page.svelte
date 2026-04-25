@@ -36,7 +36,7 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background flex items-center justify-center p-4">
+<div class="min-h-screen bg-dot-grid flex items-center justify-center p-4">
 	<div class="w-full max-w-sm">
 		<div class="bg-surface border border-border rounded-2xl p-6 shadow-2xl animate-fade-up">
 			<div class="text-center mb-6">
