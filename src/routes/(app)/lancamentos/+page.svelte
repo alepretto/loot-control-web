@@ -52,6 +52,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	let formDate = $state('');
 	let formType = $state<TransactionType>('outcome');
 	let formCategoryId = $state('');
+	let formNature = $state<string | null>(null);
 	let formSubcategoryId = $state('');
 	let formAccountId = $state('');
 	let formCurrencyId = $state('');
@@ -94,6 +95,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		const local = new Date(now.getTime() - offset * 60000);
 		formDate = local.toISOString().slice(0, 16);
 		formType = 'outcome';
+		formNature = null;
 		formCategoryId = '';
 		formSubcategoryId = '';
 		formAccountId = accounts.length > 0 ? accounts[0].id : '';
@@ -118,6 +120,8 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		const sub = subcategories.find(s => s.id === tx.subcategory_id);
 		formCategoryId = sub?.category_id || '';
 		formSubcategoryId = tx.subcategory_id;
+		const cat = categories.find(c => c.id === formCategoryId);
+		formNature = cat?.nature ?? null;
 		formAccountId = tx.account_id;
 		formCurrencyId = tx.currency_id;
 		formDescription = tx.description || '';
@@ -135,6 +139,10 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		const amount = Number(formAmount);
 		if (isNaN(amount) || amount <= 0) {
 			formError = 'Valor deve ser maior que zero';
+			return;
+		}
+		if (!formNature) {
+			formError = 'Selecione uma natureza';
 			return;
 		}
 		if (!formSubcategoryId) {
@@ -210,6 +218,12 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		const symbol = getCurrencySymbol(currencyId);
 		return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 	}
+
+	// Derived for modal (exclude investment from form nature)
+	const MODAL_NATURE_OPTIONS = ['fixed', 'variable', 'revenue'] as const;
+	let formCategories = $derived(
+		formNature ? categories.filter((c) => c.nature === formNature) : []
+	);
 
 	// Filtered transactions
 	let filteredTransactions = $derived.by(() => {
@@ -615,17 +629,32 @@ import type { Category, CategoryNature } from '$lib/types/category';
 					/>
 				</div>
 
-				<div class="grid grid-cols-2 gap-3">
+				<div class="grid grid-cols-3 gap-3">
+					<div>
+						<label for="tx-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
+						<select
+							id="tx-nature"
+							bind:value={formNature}
+							onchange={() => { formCategoryId = ''; formSubcategoryId = ''; }}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+						>
+							<option value="">Selecione...</option>
+							{#each MODAL_NATURE_OPTIONS as nature}
+								<option value={nature}>{CATEGORY_NATURE_LABELS[nature]}</option>
+							{/each}
+						</select>
+					</div>
 					<div>
 						<label for="tx-category" class="block text-xs text-muted mb-1.5">Categoria</label>
 						<select
 							id="tx-category"
 							bind:value={formCategoryId}
+							disabled={!formNature}
 							onchange={() => { formSubcategoryId = ''; }}
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							<option value="">Selecione...</option>
-							{#each categories as cat}
+							{#each formCategories as cat}
 								<option value={cat.id}>{cat.label}</option>
 							{/each}
 						</select>
@@ -635,8 +664,9 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						<select
 							id="tx-subcategory"
 							bind:value={formSubcategoryId}
+							disabled={!formCategoryId}
 							required
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							<option value="">Selecione...</option>
 							{#each (formCategoryId ? subcategories.filter(s => s.category_id === formCategoryId) : []) as sub}
