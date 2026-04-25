@@ -23,6 +23,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	} from '$lib/types/transaction';
 	import { CATEGORY_NATURE_LABELS, CATEGORY_NATURE_COLORS } from '$lib/types/category';
 	import { onMount } from 'svelte';
+	import { TrendingUp, TrendingDown, Wallet, Search, X, Plus } from 'lucide-svelte';
 
 	let transactions = $state<Transaction[]>([]);
 	let accounts = $state<Account[]>([]);
@@ -248,6 +249,18 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		return result.toSorted((a, b) => new Date(b.date_transaction).getTime() - new Date(a.date_transaction).getTime());
 	});
 
+	let hasActiveFilters = $derived(filterType !== 'all' || !!filterAccountId || !!filterCategoryId || !!filterSubcategoryId || !!filterDateFrom || !!filterDateTo || !!searchQuery.trim());
+
+	function clearFilters() {
+		filterType = 'all';
+		filterAccountId = '';
+		filterCategoryId = '';
+		filterSubcategoryId = '';
+		filterDateFrom = '';
+		filterDateTo = '';
+		searchQuery = '';
+	}
+
 	// Totals
 	let totalIncome = $derived(filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
 	let totalOutcome = $derived(filteredTransactions.filter(t => t.type === 'outcome').reduce((s, t) => s + t.amount, 0));
@@ -260,27 +273,52 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		<div>
 			<h1 class="text-xl font-bold text-text-primary">Lançamentos</h1>
 			<p class="text-sm text-muted mt-0.5">Gerencie suas transações financeiras</p>
+			{#if !loading}
+				<p class="text-[10px] text-text-secondary font-data mt-0.5">{transactions.length} transação{(transactions.length) !== 1 ? 'ões' : ''} no total</p>
+			{/if}
 		</div>
 		<button
 			onclick={openCreate}
-			class="bg-primary hover:bg-primary-hover text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+			class="bg-primary hover:bg-primary-hover text-white rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-[0.98] flex items-center gap-1.5"
 		>
-			+ Novo lançamento
+			<Plus class="w-4 h-4" />
+			Novo lançamento
 		</button>
 	</div>
 
 	<!-- Summary cards -->
-	<div class="flex gap-3 animate-fade-up">
-		<div class="flex-1 bg-surface border border-border rounded-xl p-3">
-			<p class="text-xs text-muted">Entradas</p>
+	<div class="grid grid-cols-3 gap-3 animate-stagger">
+		<div class="bg-surface border border-border/50 rounded-xl p-4 hover:border-[#22c55e]/30 hover:bg-[#22c55e]/[0.02] transition-all duration-200 group">
+			<div class="flex items-center justify-between mb-2">
+				<p class="text-[10px] font-semibold text-muted uppercase tracking-widest">Entradas</p>
+				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-[#22c55e]/10 text-[#22c55e] group-hover:scale-110 transition-transform duration-200">
+					<TrendingUp class="w-4 h-4" />
+				</div>
+			</div>
 			<p class="text-lg font-data font-semibold" style="color: #22c55e">{formatCurrency(totalIncome, '')}</p>
+			<p class="text-[10px] text-text-secondary mt-0.5">
+				{filteredTransactions.filter(t => t.type === 'income').length} transação{(filteredTransactions.filter(t => t.type === 'income').length) !== 1 ? 'ões' : ''}
+			</p>
 		</div>
-		<div class="flex-1 bg-surface border border-border rounded-xl p-3">
-			<p class="text-xs text-muted">Saídas</p>
+		<div class="bg-surface border border-border/50 rounded-xl p-4 hover:border-[#ef4444]/30 hover:bg-[#ef4444]/[0.02] transition-all duration-200 group">
+			<div class="flex items-center justify-between mb-2">
+				<p class="text-[10px] font-semibold text-muted uppercase tracking-widest">Saídas</p>
+				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ef4444]/10 text-[#ef4444] group-hover:scale-110 transition-transform duration-200">
+					<TrendingDown class="w-4 h-4" />
+				</div>
+			</div>
 			<p class="text-lg font-data font-semibold" style="color: #ef4444">{formatCurrency(totalOutcome, '')}</p>
+			<p class="text-[10px] text-text-secondary mt-0.5">
+				{filteredTransactions.filter(t => t.type === 'outcome').length} transação{(filteredTransactions.filter(t => t.type === 'outcome').length) !== 1 ? 'ões' : ''}
+			</p>
 		</div>
-		<div class="flex-1 bg-surface border border-border rounded-xl p-3">
-			<p class="text-xs text-muted">Saldo</p>
+		<div class="bg-surface border border-border/50 rounded-xl p-4 hover:border-primary/30 hover:bg-primary/[0.02] transition-all duration-200 group">
+			<div class="flex items-center justify-between mb-2">
+				<p class="text-[10px] font-semibold text-muted uppercase tracking-widest">Saldo</p>
+				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10 text-primary group-hover:scale-110 transition-transform duration-200">
+					<Wallet class="w-4 h-4" />
+				</div>
+			</div>
 			<p class="text-lg font-data font-semibold" style="color: {netBalance >= 0 ? '#22c55e' : '#ef4444'}">
 				{netBalance >= 0 ? '+' : ''}{formatCurrency(netBalance, '')}
 			</p>
@@ -288,64 +326,82 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	</div>
 
 	<!-- Filters -->
-	<div class="space-y-3 animate-fade-up">
-		<div class="flex flex-wrap gap-3">
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Buscar..."
-				class="flex-1 min-w-[200px] bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			/>
-			<select
-				bind:value={filterType}
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			>
-				<option value="all">Todos os tipos</option>
-				<option value="income">Entradas</option>
-				<option value="outcome">Saídas</option>
-			</select>
-			<select
-				bind:value={filterAccountId}
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			>
-				<option value="">Todas as contas</option>
-				{#each accounts as acct}
-					<option value={acct.id}>{acct.label}</option>
-				{/each}
-			</select>
+	<div class="bg-surface border border-border/50 rounded-xl overflow-hidden animate-fade-up">
+		<div class="flex items-center justify-between px-4 py-3 border-b border-border/50">
+			<div class="flex items-center gap-2">
+				<Search class="w-3.5 h-3.5 text-muted" />
+				<span class="text-[10px] font-semibold text-muted uppercase tracking-wider">Filtros</span>
+				{#if hasActiveFilters}
+					<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-data">{filteredTransactions.length} resultado{(filteredTransactions.length) !== 1 ? 's' : ''}</span>
+				{/if}
+			</div>
+			{#if hasActiveFilters}
+				<button
+					onclick={clearFilters}
+					class="text-[10px] text-muted hover:text-danger hover:bg-danger/10 px-2 py-1 rounded-lg transition-all duration-200 flex items-center gap-1"
+				>
+					<X class="w-3 h-3" />
+					Limpar filtros
+				</button>
+			{/if}
 		</div>
-		<div class="flex flex-wrap gap-3">
-			<select
-				bind:value={filterCategoryId}
-				onchange={() => { filterSubcategoryId = ''; }}
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			>
-				<option value="">Todas as categorias</option>
-				{#each categories as cat}
-					<option value={cat.id}>{cat.label}</option>
-				{/each}
-			</select>
-			<select
-				bind:value={filterSubcategoryId}
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			>
-				<option value="">Todas as subcategorias</option>
-				{#each (filterCategoryId ? subcategories.filter(s => s.category_id === filterCategoryId) : subcategories) as sub}
-					<option value={sub.id}>{sub.label}</option>
-				{/each}
-			</select>
-			<input
-				type="date"
-				bind:value={filterDateFrom}
-				placeholder="De"
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			/>
-			<input
-				type="date"
-				bind:value={filterDateTo}
-				placeholder="Até"
-				class="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-			/>
+		<div class="p-4 space-y-3">
+			<div class="flex flex-wrap gap-2.5">
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Buscar por descrição, conta, categoria..."
+					class="flex-1 min-w-[220px] bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+				/>
+				<select
+					bind:value={filterType}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+				>
+					<option value="all">Todos os tipos</option>
+					<option value="income">Entradas</option>
+					<option value="outcome">Saídas</option>
+				</select>
+				<select
+					bind:value={filterAccountId}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+				>
+					<option value="">Todas as contas</option>
+					{#each accounts as acct}
+						<option value={acct.id}>{acct.label}</option>
+					{/each}
+				</select>
+			</div>
+			<div class="flex flex-wrap gap-2.5">
+				<select
+					bind:value={filterCategoryId}
+					onchange={() => { filterSubcategoryId = ''; }}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+				>
+					<option value="">Todas as categorias</option>
+					{#each categories as cat}
+						<option value={cat.id}>{cat.label}</option>
+					{/each}
+				</select>
+				<select
+					bind:value={filterSubcategoryId}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+				>
+					<option value="">Todas as subcategorias</option>
+					{#each (filterCategoryId ? subcategories.filter(s => s.category_id === filterCategoryId) : subcategories) as sub}
+						<option value={sub.id}>{sub.label}</option>
+					{/each}
+				</select>
+				<input
+					type="date"
+					bind:value={filterDateFrom}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all [color-scheme:dark]"
+				/>
+				<input
+					type="date"
+					bind:value={filterDateTo}
+					class="bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all [color-scheme:dark]"
+				/>
+			</div>
 		</div>
 	</div>
 
@@ -353,72 +409,92 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	{#if loading}
 		<div class="text-muted text-sm animate-fade-in">Carregando...</div>
 	{:else if filteredTransactions.length === 0}
-		<div class="bg-surface border border-border rounded-xl p-8 text-center animate-fade-up">
-			<p class="text-muted">{searchQuery || filterType !== 'all' || filterAccountId || filterCategoryId || filterSubcategoryId || filterDateFrom || filterDateTo ? 'Nenhum lançamento encontrado' : 'Nenhum lançamento registrado'}</p>
-			{#if !searchQuery && filterType === 'all' && !filterAccountId && !filterCategoryId && !filterSubcategoryId && !filterDateFrom && !filterDateTo}
-				<p class="text-text-secondary text-sm mt-1">Clique em "Novo lançamento" para começar</p>
+		<div class="bg-surface border border-border/50 rounded-xl p-10 text-center animate-fade-up">
+			<div class="text-3xl mb-3 opacity-30">{hasActiveFilters ? '🔍' : '📋'}</div>
+			<p class="text-sm text-muted font-medium">{hasActiveFilters ? 'Nenhum lançamento encontrado' : 'Nenhum lançamento registrado'}</p>
+			{#if !hasActiveFilters}
+				<p class="text-xs text-text-secondary mt-1">Clique em "+ Novo lançamento" para começar</p>
+			{:else}
+				<button onclick={clearFilters} class="text-xs text-primary hover:text-primary-hover mt-2 transition-colors">Limpar filtros</button>
 			{/if}
 		</div>
 	{:else}
-		<div class="bg-surface border border-border rounded-xl overflow-hidden animate-fade-up">
+		<div class="bg-surface border border-border/50 rounded-xl overflow-hidden animate-fade-up">
 			<!-- Desktop table -->
 			<div class="hidden md:block overflow-x-auto">
 				<table class="sheet-table">
 					<thead>
 						<tr>
-							<th>Data</th>
+							<th class="text-center">Data</th>
 							<th class="text-center">Tipo</th>
 							<th class="text-center">Descrição</th>
 							<th class="text-center">Categoria</th>
 							<th class="text-center">Conta</th>
 							<th class="text-center">Pagamento</th>
 							<th class="text-center">Valor</th>
-							<th class="text-center"></th>
+							<th class="text-center w-20"></th>
 						</tr>
 					</thead>
 					<tbody>
-						{#each filteredTransactions as tx (tx.id)}
-							<tr>
-								<td class="font-data whitespace-nowrap text-center">{formatDate(tx.date_transaction)}</td>
+						{#each filteredTransactions as tx, i (tx.id)}
+							{@const isIncome = tx.type === 'income'}
+							<tr class="transition-all duration-150 hover:bg-surface-2/40 {i % 2 === 0 ? 'bg-transparent' : 'bg-surface-2/20'}">
+								<td class="font-data whitespace-nowrap text-xs text-muted text-center">{formatDate(tx.date_transaction)}</td>
 								<td class="text-center">
 									<span
-										class="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-										style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}15; border: 1px solid {TRANSACTION_TYPE_COLORS[tx.type]}30; color: {TRANSACTION_TYPE_COLORS[tx.type]}"
+										class="text-[10px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+										style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}12; color: {TRANSACTION_TYPE_COLORS[tx.type]}"
 									>
+										<span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}"></span>
 										{TRANSACTION_TYPE_LABELS[tx.type]}
 									</span>
 								</td>
-								<td class="max-w-[200px] truncate text-center">{tx.description || '—'}</td>
+								<td class="max-w-[200px] truncate text-sm text-text-primary text-center">{tx.description || '—'}</td>
 								<td class="text-center">
 									{#if getSubcategoryNature(tx.subcategory_id)}
 										<span
-											class="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-											style="background-color: {CATEGORY_NATURE_COLORS[getSubcategoryNature(tx.subcategory_id) as CategoryNature]}15; color: {CATEGORY_NATURE_COLORS[getSubcategoryNature(tx.subcategory_id) as CategoryNature]}"
+											class="text-[10px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+											style="background-color: {CATEGORY_NATURE_COLORS[getSubcategoryNature(tx.subcategory_id) as CategoryNature]}12; color: {CATEGORY_NATURE_COLORS[getSubcategoryNature(tx.subcategory_id) as CategoryNature]}"
 										>
+											<span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color: {CATEGORY_NATURE_COLORS[getSubcategoryNature(tx.subcategory_id) as CategoryNature]}"></span>
 											{getSubcategoryName(tx.subcategory_id)}
 										</span>
 									{:else}
-										<span class="text-center">{getSubcategoryName(tx.subcategory_id)}</span>
+										<span class="text-xs text-muted">{getSubcategoryName(tx.subcategory_id)}</span>
 									{/if}
 								</td>
-								<td class="text-center">{getAccountName(tx.account_id)}</td>
-								<td class="text-center">{tx.payment_methods ? PAYMENT_METHOD_LABELS[tx.payment_methods] : '—'}</td>
-								<td class="font-data whitespace-nowrap text-center" style="color: {tx.type === 'income' ? '#22c55e' : '#ef4444'}">
-									{tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, tx.currency_id)}
+								<td class="text-xs text-text-secondary text-center">{getAccountName(tx.account_id)}</td>
+								<td class="text-center">
+									{#if tx.payment_methods}
+										<span
+											class="text-[10px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+											style="background-color: {tx.payment_methods === 'credit' ? '#a855f712' : tx.payment_methods === 'debit' ? '#f9731612' : '#3b82f612'}; color: {tx.payment_methods === 'credit' ? '#a855f7' : tx.payment_methods === 'debit' ? '#f97316' : '#3b82f6'}"
+										>
+											<span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color: {tx.payment_methods === 'credit' ? '#a855f7' : tx.payment_methods === 'debit' ? '#f97316' : '#3b82f6'}"></span>
+											{PAYMENT_METHOD_LABELS[tx.payment_methods]}
+										</span>
+									{:else}
+										<span class="text-muted text-[10px]">—</span>
+									{/if}
+								</td>
+								<td class="font-data whitespace-nowrap font-semibold text-center" style="color: {isIncome ? '#22c55e' : '#ef4444'}">
+									<span class="text-[10px] opacity-60">{isIncome ? '+' : '−'}</span>{formatCurrency(tx.amount, tx.currency_id)}
 								</td>
 								<td class="text-center">
 									<div class="flex items-center justify-center gap-1">
 										<button
 											onclick={() => openEdit(tx)}
-											class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 rounded transition-colors"
+											class="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all duration-200 text-xs active:scale-90"
+											title="Editar"
 										>
-											Editar
+											✏️
 										</button>
 										<button
 											onclick={() => deletingId = tx.id}
-											class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 rounded transition-colors"
+											class="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-all duration-200 text-xs active:scale-90"
+											title="Excluir"
 										>
-											Excluir
+											🗑️
 										</button>
 									</div>
 								</td>
@@ -429,37 +505,44 @@ import type { Category, CategoryNature } from '$lib/types/category';
 			</div>
 
 			<!-- Mobile cards -->
-			<div class="md:hidden divide-y divide-border">
+			<div class="md:hidden divide-y divide-border/50">
 				{#each filteredTransactions as tx (tx.id)}
-					<div class="p-3 flex items-start gap-3">
+					{@const isIncome = tx.type === 'income'}
+					<div class="p-3.5 flex items-start gap-3 {isIncome ? 'bg-[#22c55e]/[0.01]' : 'bg-[#ef4444]/[0.01]'}">
 						<div
-							class="w-1 h-full rounded self-stretch shrink-0"
-							style="background-color: {tx.type === 'income' ? '#22c55e' : '#ef4444'}"
+							class="w-1 self-stretch shrink-0 rounded-full"
+							style="background-color: {isIncome ? '#22c55e' : '#ef4444'}"
 						></div>
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center justify-between gap-2">
 								<p class="text-sm font-medium text-text-primary truncate">{tx.description || 'Sem descrição'}</p>
-								<p class="text-sm font-data font-semibold shrink-0" style="color: {tx.type === 'income' ? '#22c55e' : '#ef4444'}">
-									{tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, tx.currency_id)}
+								<p class="text-sm font-data font-semibold shrink-0" style="color: {isIncome ? '#22c55e' : '#ef4444'}">
+									{isIncome ? '+' : '−'}{formatCurrency(tx.amount, tx.currency_id)}
 								</p>
 							</div>
-							<div class="flex flex-wrap items-center gap-2 mt-1">
-								<span class="text-xs text-muted">{formatDate(tx.date_transaction)}</span>
+							<div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+								<span class="text-[10px] text-muted">{formatDate(tx.date_transaction)}</span>
 								<span
-									class="text-[9px] font-semibold px-1 py-0.5 rounded"
-									style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}15; color: {TRANSACTION_TYPE_COLORS[tx.type]}"
+									class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md inline-flex items-center gap-1"
+									style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}12; color: {TRANSACTION_TYPE_COLORS[tx.type]}"
 								>
+									<span class="w-1.5 h-1.5 rounded-full inline-block" style="background-color: {TRANSACTION_TYPE_COLORS[tx.type]}"></span>
 									{TRANSACTION_TYPE_LABELS[tx.type]}
 								</span>
-								<span class="text-xs text-muted">{getAccountName(tx.account_id)}</span>
+								<span class="text-[10px] text-muted">{getAccountName(tx.account_id)}</span>
 								{#if tx.payment_methods}
-									<span class="text-xs text-muted">{PAYMENT_METHOD_LABELS[tx.payment_methods]}</span>
+									<span
+										class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+										style="background-color: {tx.payment_methods === 'credit' ? '#a855f712' : tx.payment_methods === 'debit' ? '#f9731612' : '#3b82f612'}; color: {tx.payment_methods === 'credit' ? '#a855f7' : tx.payment_methods === 'debit' ? '#f97316' : '#3b82f6'}"
+									>
+										{PAYMENT_METHOD_LABELS[tx.payment_methods]}
+									</span>
 								{/if}
 							</div>
 						</div>
 						<div class="flex items-center gap-1 shrink-0">
-							<button onclick={() => openEdit(tx)} class="text-muted hover:text-text-primary text-[10px] px-1.5 py-0.5 transition-colors">Editar</button>
-							<button onclick={() => deletingId = tx.id} class="text-muted hover:text-danger text-[10px] px-1.5 py-0.5 transition-colors">Excluir</button>
+							<button onclick={() => openEdit(tx)} class="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all duration-200 text-xs active:scale-90" title="Editar">✏️</button>
+							<button onclick={() => deletingId = tx.id} class="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-all duration-200 text-xs active:scale-90" title="Excluir">🗑️</button>
 						</div>
 					</div>
 				{/each}
@@ -484,62 +567,62 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</div>
 			{/if}
 
-			<form onsubmit={handleSubmit} class="space-y-4">
+			<form onsubmit={handleSubmit} class="space-y-5">
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label for="tx-type" class="block text-sm text-muted mb-1">Tipo</label>
+						<label for="tx-type" class="block text-xs text-muted mb-1.5">Tipo</label>
 						<select
 							id="tx-type"
 							bind:value={formType}
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							<option value="outcome">Saída</option>
 							<option value="income">Entrada</option>
 						</select>
 					</div>
 					<div>
-						<label for="tx-amount" class="block text-sm text-muted mb-1">Valor</label>
+						<label for="tx-amount" class="block text-xs text-muted mb-1.5">Valor</label>
 						<input
 							id="tx-amount"
 							type="text"
 							inputmode="decimal"
 							bind:value={formAmount}
 							required
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-data focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary font-data focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						/>
 					</div>
 				</div>
 
 				<div>
-					<label for="tx-description" class="block text-sm text-muted mb-1">Descrição</label>
+					<label for="tx-description" class="block text-xs text-muted mb-1.5">Descrição</label>
 					<input
 						id="tx-description"
 						type="text"
 						bind:value={formDescription}
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						placeholder="Ex: Supermercado"
 					/>
 				</div>
 
 				<div>
-					<label for="tx-date" class="block text-sm text-muted mb-1">Data</label>
+					<label for="tx-date" class="block text-xs text-muted mb-1.5">Data</label>
 					<input
 						id="tx-date"
 						type="datetime-local"
 						bind:value={formDate}
 						required
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all [color-scheme:dark]"
 					/>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label for="tx-category" class="block text-sm text-muted mb-1">Categoria</label>
+						<label for="tx-category" class="block text-xs text-muted mb-1.5">Categoria</label>
 						<select
 							id="tx-category"
 							bind:value={formCategoryId}
 							onchange={() => { formSubcategoryId = ''; }}
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							<option value="">Selecione...</option>
 							{#each categories as cat}
@@ -548,12 +631,12 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						</select>
 					</div>
 					<div>
-						<label for="tx-subcategory" class="block text-sm text-muted mb-1">Subcategoria</label>
+						<label for="tx-subcategory" class="block text-xs text-muted mb-1.5">Subcategoria</label>
 						<select
 							id="tx-subcategory"
 							bind:value={formSubcategoryId}
 							required
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							<option value="">Selecione...</option>
 							{#each (formCategoryId ? subcategories.filter(s => s.category_id === formCategoryId) : []) as sub}
@@ -565,12 +648,12 @@ import type { Category, CategoryNature } from '$lib/types/category';
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label for="tx-account" class="block text-sm text-muted mb-1">Conta</label>
+						<label for="tx-account" class="block text-xs text-muted mb-1.5">Conta</label>
 						<select
 							id="tx-account"
 							bind:value={formAccountId}
 							required
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							{#each accounts as acct}
 								<option value={acct.id}>{acct.label}</option>
@@ -578,12 +661,12 @@ import type { Category, CategoryNature } from '$lib/types/category';
 						</select>
 					</div>
 					<div>
-						<label for="tx-currency" class="block text-sm text-muted mb-1">Moeda</label>
+						<label for="tx-currency" class="block text-xs text-muted mb-1.5">Moeda</label>
 						<select
 							id="tx-currency"
 							bind:value={formCurrencyId}
 							required
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							{#each currencies as cur}
 								<option value={cur.id}>{cur.label} ({cur.symbol})</option>
@@ -593,12 +676,12 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</div>
 
 				<div>
-					<label for="tx-payment" class="block text-sm text-muted mb-1">Método de pagamento</label>
+					<label for="tx-payment" class="block text-xs text-muted mb-1.5">Método de pagamento</label>
 					<select
 						id="tx-payment"
 						bind:value={formPaymentMethod}
 						onchange={() => { if (formPaymentMethod !== 'credit') formCreditCardId = ''; }}
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 					>
 						<option value="">Nenhum</option>
 						<option value="pix">Pix</option>
@@ -609,11 +692,11 @@ import type { Category, CategoryNature } from '$lib/types/category';
 
 				{#if formPaymentMethod === 'credit'}
 					<div>
-						<label for="tx-card" class="block text-sm text-muted mb-1">Cartão</label>
+						<label for="tx-card" class="block text-xs text-muted mb-1.5">Cartão</label>
 						<select
 							id="tx-card"
 							bind:value={formCreditCardId}
-							class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
 							<option value="">Selecione o cartão...</option>
 							{#each creditCards.filter(c => c.account_id === formAccountId) as card}
@@ -626,14 +709,14 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				<div class="flex gap-3 pt-2">
 					<button
 						type="submit"
-						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2 text-sm font-medium transition-colors"
+						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
 					>
 						{editingId ? 'Salvar' : 'Criar'}
 					</button>
 					<button
 						type="button"
 						onclick={() => { showForm = false; resetForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
 					>
 						Cancelar
 					</button>
@@ -654,13 +737,13 @@ import type { Category, CategoryNature } from '$lib/types/category';
 			<div class="flex gap-3">
 				<button
 					onclick={() => handleDelete(deletingId!)}
-					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2 text-sm font-medium hover:bg-danger/25 transition-colors"
+					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
 				>
 					Excluir
 				</button>
 				<button
 					onclick={() => deletingId = null}
-					class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
 				>
 					Cancelar
 				</button>
