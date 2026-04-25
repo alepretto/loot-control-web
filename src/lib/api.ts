@@ -234,8 +234,16 @@ export async function deleteCreditCardStatement(id: string): Promise<void> {
 }
 
 // Transactions
-export async function getTransactions(): Promise<import('$lib/types/transaction').Transaction[]> {
-	return request<import('$lib/types/transaction').Transaction[]>('/transactions');
+export async function getTransactions(params?: { account_id?: string; statement_id?: string }): Promise<import('$lib/types/transaction').Transaction[]> {
+	let path = '/transactions';
+	if (params) {
+		const search = new URLSearchParams();
+		if (params.account_id) search.set('account_id', params.account_id);
+		if (params.statement_id) search.set('statement_id', params.statement_id);
+		const qs = search.toString();
+		if (qs) path += '?' + qs;
+	}
+	return request<import('$lib/types/transaction').Transaction[]>(path);
 }
 
 export async function getTransaction(id: string): Promise<import('$lib/types/transaction').Transaction> {
