@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { auth, isAuthenticated } from '$lib/stores/auth';
+	import { auth, isAuthenticated, isAdmin } from '$lib/stores/auth';
 	import { logout } from '$lib/api';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -43,8 +43,9 @@
 	<div class="flex h-screen bg-dot-grid">
 		<!-- Sidebar -->
 		<aside class="hidden md:flex flex-col w-56 bg-surface border-r border-border shrink-0">
-			<div class="p-4 pb-2">
-				<h1 class="text-lg font-bold text-text-primary">Loot Control</h1>
+			<div class="p-4 pb-2 flex items-center gap-2.5">
+				<img src="/nav-icon-fundo-transparente.png" alt="" class="size-8 shrink-0" />
+				<span class="text-lg font-bold text-text-primary">Loot Control</span>
 			</div>
 
 			<nav class="flex-1 px-2 space-y-1 overflow-y-auto">
@@ -69,6 +70,17 @@
 						{item.label}
 					</a>
 				{/each}
+
+				{#if $isAdmin}
+					<p class="text-[10px] font-semibold text-muted uppercase tracking-wider px-2 pt-4 pb-1">Administração</p>
+					<a
+						href="/admin"
+						class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors {isActive('/admin') ? 'bg-primary/10 text-primary nav-active-indicator' : 'text-muted hover:bg-surface-2 hover:text-text-primary'}"
+					>
+						<span class="text-base opacity-70">⚙</span>
+						Admin
+					</a>
+				{/if}
 			</nav>
 
 			<div class="p-3 border-t border-border">

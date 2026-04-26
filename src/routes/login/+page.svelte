@@ -38,6 +38,9 @@
 
 <div class="min-h-screen bg-dot-grid flex items-center justify-center p-4">
 	<div class="w-full max-w-sm">
+		<div class="flex justify-center mb-6 animate-fade-in">
+			<img src="/logo.png" alt="Loot Control" class="w-52 h-auto" />
+		</div>
 		<div class="bg-surface border border-border rounded-2xl p-6 shadow-2xl animate-fade-up">
 			<div class="text-center mb-6">
 				<h1 class="text-2xl font-bold text-text-primary">
