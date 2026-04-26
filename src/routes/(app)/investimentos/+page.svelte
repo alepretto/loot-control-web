@@ -461,7 +461,7 @@
 				<!-- Header -->
 				<div class="flex items-center justify-between px-5 py-4 border-b border-border">
 					<h2 class="text-lg font-bold text-text-primary">Novo Investimento</h2>
-					<button type="button" onclick={closeModal} class="text-muted hover:text-text-primary transition-colors">
+					<button type="button" onclick={closeModal} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all">
 						<X size={20} />
 					</button>
 				</div>
@@ -640,7 +640,7 @@
 					<button
 						type="button"
 						onclick={closeModal}
-						class="px-4 py-2 text-sm text-muted hover:text-text-primary transition-colors rounded-lg"
+						class="px-4 py-2 text-sm text-muted hover:text-text-primary transition-colors rounded-lg active:scale-[0.98]"
 					>
 						Cancelar
 					</button>

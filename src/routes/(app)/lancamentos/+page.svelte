@@ -23,7 +23,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	} from '$lib/types/transaction';
 	import { CATEGORY_NATURE_LABELS, CATEGORY_NATURE_COLORS } from '$lib/types/category';
 	import { onMount } from 'svelte';
-	import { TrendingUp, TrendingDown, Wallet, Search, X, Plus } from 'lucide-svelte';
+	import { TrendingUp, TrendingDown, Wallet, Search, X, Plus, ArrowRightLeft } from 'lucide-svelte';
 
 	let transactions = $state<Transaction[]>([]);
 	let accounts = $state<Account[]>([]);
@@ -89,6 +89,11 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		}
 	}
 
+	function getDefaultCurrencyId(): string {
+		const brl = currencies.find(c => c.code === 'BRL');
+		return brl?.id ?? (currencies.length > 0 ? currencies[0].id : '');
+	}
+
 	function resetForm() {
 		const now = new Date();
 		const offset = now.getTimezoneOffset();
@@ -99,7 +104,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 		formCategoryId = '';
 		formSubcategoryId = '';
 		formAccountId = accounts.length > 0 ? accounts[0].id : '';
-		formCurrencyId = currencies.length > 0 ? currencies[0].id : '';
+		formCurrencyId = getDefaultCurrencyId();
 		formDescription = '';
 		formAmount = '';
 		formPaymentMethod = '';
@@ -570,173 +575,190 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showForm = false; resetForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showForm = false; resetForm(); } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl max-w-[500px] p-6 shadow-2xl animate-fade-up max-h-[90vh] overflow-y-auto" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-4">
-				{editingId ? 'Editar lançamento' : 'Novo lançamento'}
-			</h2>
-
-			{#if formError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{formError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-[500px] shadow-2xl animate-fade-up max-h-[90vh] overflow-y-auto p-0" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<!-- Header -->
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50 sticky top-0 bg-surface-2 z-10">
+				<div class="flex items-center gap-2">
+					<ArrowRightLeft class="w-5 h-5 text-primary" />
+					<h2 class="text-lg font-bold text-text-primary">
+						{editingId ? 'Editar lançamento' : 'Novo lançamento'}
+					</h2>
 				</div>
-			{/if}
+				<button
+					onclick={() => { showForm = false; resetForm(); }}
+					class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all"
+					title="Fechar"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-5">
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="tx-type" class="block text-xs text-muted mb-1.5">Tipo</label>
-						<select
-							id="tx-type"
-							bind:value={formType}
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						>
-							<option value="outcome">Saída</option>
-							<option value="income">Entrada</option>
-						</select>
+			<!-- Body -->
+			<form onsubmit={handleSubmit}>
+				<div class="px-6 pb-4 space-y-5">
+					{#if formError}
+						<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+							{formError}
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label for="tx-type" class="block text-xs text-muted mb-1.5">Tipo</label>
+							<select
+								id="tx-type"
+								bind:value={formType}
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							>
+								<option value="outcome">Saída</option>
+								<option value="income">Entrada</option>
+							</select>
+						</div>
+						<div>
+							<label for="tx-amount" class="block text-xs text-muted mb-1.5">Valor</label>
+							<input
+								id="tx-amount"
+								type="text"
+								inputmode="decimal"
+								bind:value={formAmount}
+								required
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary font-data placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							/>
+						</div>
 					</div>
+
 					<div>
-						<label for="tx-amount" class="block text-xs text-muted mb-1.5">Valor</label>
+						<label for="tx-description" class="block text-xs text-muted mb-1.5">Descrição</label>
 						<input
-							id="tx-amount"
+							id="tx-description"
 							type="text"
-							inputmode="decimal"
-							bind:value={formAmount}
-							required
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary font-data focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							bind:value={formDescription}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="Ex: Supermercado"
 						/>
 					</div>
-				</div>
 
-				<div>
-					<label for="tx-description" class="block text-xs text-muted mb-1.5">Descrição</label>
-					<input
-						id="tx-description"
-						type="text"
-						bind:value={formDescription}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						placeholder="Ex: Supermercado"
-					/>
-				</div>
-
-				<div>
-					<label for="tx-date" class="block text-xs text-muted mb-1.5">Data</label>
-					<input
-						id="tx-date"
-						type="datetime-local"
-						bind:value={formDate}
-						required
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all [color-scheme:dark]"
-					/>
-				</div>
-
-				<div class="grid grid-cols-3 gap-3">
 					<div>
-						<label for="tx-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
-						<select
-							id="tx-nature"
-							bind:value={formNature}
-							onchange={() => { formCategoryId = ''; formSubcategoryId = ''; }}
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						>
-							<option value="">Selecione...</option>
-							{#each MODAL_NATURE_OPTIONS as nature}
-								<option value={nature}>{CATEGORY_NATURE_LABELS[nature]}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label for="tx-category" class="block text-xs text-muted mb-1.5">Categoria</label>
-						<select
-							id="tx-category"
-							bind:value={formCategoryId}
-							disabled={!formNature}
-							onchange={() => { formSubcategoryId = ''; }}
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							<option value="">Selecione...</option>
-							{#each formCategories as cat}
-								<option value={cat.id}>{cat.label}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label for="tx-subcategory" class="block text-xs text-muted mb-1.5">Subcategoria</label>
-						<select
-							id="tx-subcategory"
-							bind:value={formSubcategoryId}
-							disabled={!formCategoryId}
+						<label for="tx-date" class="block text-xs text-muted mb-1.5">Data</label>
+						<input
+							id="tx-date"
+							type="datetime-local"
+							bind:value={formDate}
 							required
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all [color-scheme:dark]"
+						/>
+					</div>
+
+					<div class="grid grid-cols-3 gap-3">
+						<div>
+							<label for="tx-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
+							<select
+								id="tx-nature"
+								bind:value={formNature}
+								onchange={() => { formCategoryId = ''; formSubcategoryId = ''; }}
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							>
+								<option value="">Selecione...</option>
+								{#each MODAL_NATURE_OPTIONS as nature}
+									<option value={nature}>{CATEGORY_NATURE_LABELS[nature]}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label for="tx-category" class="block text-xs text-muted mb-1.5">Categoria</label>
+							<select
+								id="tx-category"
+								bind:value={formCategoryId}
+								disabled={!formNature}
+								onchange={() => { formSubcategoryId = ''; }}
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								<option value="">Selecione...</option>
+								{#each formCategories as cat}
+									<option value={cat.id}>{cat.label}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label for="tx-subcategory" class="block text-xs text-muted mb-1.5">Subcategoria</label>
+							<select
+								id="tx-subcategory"
+								bind:value={formSubcategoryId}
+								disabled={!formCategoryId}
+								required
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								<option value="">Selecione...</option>
+								{#each (formCategoryId ? subcategories.filter(s => s.category_id === formCategoryId) : []) as sub}
+									<option value={sub.id}>{sub.label}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<label for="tx-account" class="block text-xs text-muted mb-1.5">Conta</label>
+							<select
+								id="tx-account"
+								bind:value={formAccountId}
+								required
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							>
+								{#each accounts as acct}
+									<option value={acct.id}>{acct.label}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label for="tx-currency" class="block text-xs text-muted mb-1.5">Moeda</label>
+							<select
+								id="tx-currency"
+								bind:value={formCurrencyId}
+								required
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							>
+								{#each currencies as cur}
+									<option value={cur.id}>{cur.label} ({cur.symbol})</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<div>
+						<label for="tx-payment" class="block text-xs text-muted mb-1.5">Método de pagamento</label>
+						<select
+							id="tx-payment"
+							bind:value={formPaymentMethod}
+							onchange={() => { if (formPaymentMethod !== 'credit') formCreditCardId = ''; }}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
 						>
-							<option value="">Selecione...</option>
-							{#each (formCategoryId ? subcategories.filter(s => s.category_id === formCategoryId) : []) as sub}
-								<option value={sub.id}>{sub.label}</option>
-							{/each}
+							<option value="">Nenhum</option>
+							<option value="pix">Pix</option>
+							<option value="debit">Débito</option>
+							<option value="credit">Crédito</option>
 						</select>
 					</div>
+
+					{#if formPaymentMethod === 'credit'}
+						<div>
+							<label for="tx-card" class="block text-xs text-muted mb-1.5">Cartão</label>
+							<select
+								id="tx-card"
+								bind:value={formCreditCardId}
+								class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							>
+								<option value="">Selecione o cartão...</option>
+								{#each creditCards.filter(c => c.account_id === formAccountId) as card}
+									<option value={card.id}>{card.label}</option>
+								{/each}
+							</select>
+						</div>
+					{/if}
 				</div>
 
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="tx-account" class="block text-xs text-muted mb-1.5">Conta</label>
-						<select
-							id="tx-account"
-							bind:value={formAccountId}
-							required
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						>
-							{#each accounts as acct}
-								<option value={acct.id}>{acct.label}</option>
-							{/each}
-						</select>
-					</div>
-					<div>
-						<label for="tx-currency" class="block text-xs text-muted mb-1.5">Moeda</label>
-						<select
-							id="tx-currency"
-							bind:value={formCurrencyId}
-							required
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						>
-							{#each currencies as cur}
-								<option value={cur.id}>{cur.label} ({cur.symbol})</option>
-							{/each}
-						</select>
-					</div>
-				</div>
-
-				<div>
-					<label for="tx-payment" class="block text-xs text-muted mb-1.5">Método de pagamento</label>
-					<select
-						id="tx-payment"
-						bind:value={formPaymentMethod}
-						onchange={() => { if (formPaymentMethod !== 'credit') formCreditCardId = ''; }}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-					>
-						<option value="">Nenhum</option>
-						<option value="pix">Pix</option>
-						<option value="debit">Débito</option>
-						<option value="credit">Crédito</option>
-					</select>
-				</div>
-
-				{#if formPaymentMethod === 'credit'}
-					<div>
-						<label for="tx-card" class="block text-xs text-muted mb-1.5">Cartão</label>
-						<select
-							id="tx-card"
-							bind:value={formCreditCardId}
-							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						>
-							<option value="">Selecione o cartão...</option>
-							{#each creditCards.filter(c => c.account_id === formAccountId) as card}
-								<option value={card.id}>{card.label}</option>
-							{/each}
-						</select>
-					</div>
-				{/if}
-
-				<div class="flex gap-3 pt-2">
+				<!-- Footer -->
+				<div class="px-6 pb-6 flex gap-3">
 					<button
 						type="submit"
 						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
@@ -746,7 +768,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 					<button
 						type="button"
 						onclick={() => { showForm = false; resetForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 					>
 						Cancelar
 					</button>
@@ -761,10 +783,29 @@ import type { Category, CategoryNature } from '$lib/types/category';
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => deletingId = null} onkeydown={(e) => { if (e.key === 'Escape') deletingId = null; }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir lançamento</h2>
-			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
-			<div class="flex gap-3">
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up p-0" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<!-- Header -->
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<span class="text-lg">🗑️</span>
+					<h2 class="text-lg font-bold text-text-primary">Excluir lançamento</h2>
+				</div>
+				<button
+					onclick={() => deletingId = null}
+					class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all"
+					title="Fechar"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<!-- Body -->
+			<div class="px-6 pb-4">
+				<p class="text-muted text-sm">Tem certeza? Esta ação não pode ser desfeita.</p>
+			</div>
+
+			<!-- Footer -->
+			<div class="px-6 pb-6 flex gap-3">
 				<button
 					onclick={() => handleDelete(deletingId!)}
 					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
@@ -773,7 +814,7 @@ import type { Category, CategoryNature } from '$lib/types/category';
 				</button>
 				<button
 					onclick={() => deletingId = null}
-					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 				>
 					Cancelar
 				</button>

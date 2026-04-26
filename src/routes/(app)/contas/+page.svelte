@@ -3,6 +3,7 @@
 	import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_ORDER, type Account, type AccountType } from '$lib/types/account';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { Landmark, X, Plus, Pencil, Trash2 } from 'lucide-svelte';
 
 	let accounts = $state<Account[]>([]);
 	let loading = $state(true);
@@ -199,65 +200,80 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showForm = false; resetForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showForm = false; resetForm(); } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-4">
-				{editingId ? 'Editar conta' : 'Nova conta'}
-			</h2>
-
-			{#if formError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{formError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up p-0" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<!-- Header -->
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Landmark class="w-5 h-5 text-primary" />
+					<h2 class="text-lg font-bold text-text-primary">{editingId ? 'Editar conta' : 'Nova conta'}</h2>
 				</div>
-			{/if}
+				<button
+					onclick={() => { showForm = false; resetForm(); }}
+					class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all"
+					title="Fechar"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-4">
-				<div>
-					<label for="label" class="block text-sm text-muted mb-1">Nome da conta</label>
-					<input
-						id="label"
-						type="text"
-						bind:value={label}
-						required
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-						placeholder="Nubank"
-					/>
+			<!-- Body -->
+			<form onsubmit={handleSubmit}>
+				<div class="px-6 pb-4 space-y-4">
+					{#if formError}
+						<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+							{formError}
+						</div>
+					{/if}
+
+					<div>
+						<label for="label" class="block text-xs text-muted mb-1.5">Nome da conta</label>
+						<input
+							id="label"
+							type="text"
+							bind:value={label}
+							required
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="Nubank"
+						/>
+					</div>
+
+					<div>
+						<label for="type" class="block text-xs text-muted mb-1.5">Tipo</label>
+						<select
+							id="type"
+							bind:value={type}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+						>
+							{#each Object.entries(ACCOUNT_TYPE_LABELS) as [value, label_str]}
+								<option value={value}>{label_str}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div>
+						<label for="logo" class="block text-xs text-muted mb-1.5">Logo (opcional)</label>
+						<input
+							id="logo"
+							type="text"
+							bind:value={logo}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="URL do logo"
+						/>
+					</div>
 				</div>
 
-				<div>
-					<label for="type" class="block text-sm text-muted mb-1">Tipo</label>
-					<select
-						id="type"
-						bind:value={type}
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-					>
-						{#each Object.entries(ACCOUNT_TYPE_LABELS) as [value, label_str]}
-							<option value={value}>{label_str}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div>
-					<label for="logo" class="block text-sm text-muted mb-1">Logo (opcional)</label>
-					<input
-						id="logo"
-						type="text"
-						bind:value={logo}
-						class="w-full bg-surface-3 border border-border rounded-lg px-3 py-2 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-						placeholder="URL do logo"
-					/>
-				</div>
-
-				<div class="flex gap-3 pt-2">
+				<!-- Footer -->
+				<div class="px-6 pb-6 flex gap-3">
 					<button
 						type="submit"
-						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2 text-sm font-medium transition-colors"
+						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
 					>
 						{editingId ? 'Salvar' : 'Criar'}
 					</button>
 					<button
 						type="button"
 						onclick={() => { showForm = false; resetForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 					>
 						Cancelar
 					</button>
@@ -272,19 +288,38 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => deletingId = null} onkeydown={(e) => { if (e.key === 'Escape') deletingId = null; }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir conta</h2>
-			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
-			<div class="flex gap-3">
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up p-0" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<!-- Header -->
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Trash2 class="w-5 h-5 text-danger" />
+					<h2 class="text-lg font-bold text-text-primary">Excluir conta</h2>
+				</div>
+				<button
+					onclick={() => deletingId = null}
+					class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all"
+					title="Fechar"
+				>
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<!-- Body -->
+			<div class="px-6 pb-4">
+				<p class="text-muted text-sm">Tem certeza? Esta ação não pode ser desfeita.</p>
+			</div>
+
+			<!-- Footer -->
+			<div class="px-6 pb-6 flex gap-3">
 				<button
 					onclick={() => handleDelete(deletingId!)}
-					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2 text-sm font-medium hover:bg-danger/25 transition-colors"
+					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
 				>
 					Excluir
 				</button>
 				<button
 					onclick={() => deletingId = null}
-					class="flex-1 text-muted hover:text-text-primary border border-border rounded-lg py-2 text-sm transition-colors"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 				>
 					Cancelar
 				</button>

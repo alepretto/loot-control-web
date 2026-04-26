@@ -24,7 +24,7 @@
 	import type { Subcategory } from '$lib/types/subcategory';
 	import type { Currency } from '$lib/types/currency';
 	import { onMount } from 'svelte';
-	import { Plus, Pencil, Trash2, ChevronDown, Coins, Tag, Layers } from 'lucide-svelte';
+	import { Plus, Pencil, Trash2, ChevronDown, Coins, Tag, Layers, X } from 'lucide-svelte';
 
 	type TabId = 'categories' | 'subcategories' | 'currencies';
 
@@ -587,45 +587,53 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showForm = false; resetForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showForm = false; resetForm(); } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-4">
-				{editingId ? 'Editar categoria' : 'Nova categoria'}
-			</h2>
-
-			{#if formError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{formError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Tag class="w-5 h-5 text-primary" />
+					<h2 class="text-lg font-bold text-text-primary">{editingId ? 'Editar categoria' : 'Nova categoria'}</h2>
 				</div>
-			{/if}
+				<button onclick={() => { showForm = false; resetForm(); }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-4">
-				<div>
-					<label for="cat-label" class="block text-xs text-muted mb-1.5">Nome da categoria</label>
-					<input
-						id="cat-label"
-						type="text"
-						bind:value={label}
-						required
-						minlength={1}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						placeholder="Alimentação"
-					/>
+			<form onsubmit={handleSubmit}>
+				{#if formError}
+					<div class="mx-6 mt-4 bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{formError}
+					</div>
+				{/if}
+
+				<div class="px-6 pb-4 space-y-4 {formError ? 'pt-4' : 'pt-4'}">
+					<div>
+						<label for="cat-label" class="block text-xs text-muted mb-1.5">Nome da categoria</label>
+						<input
+							id="cat-label"
+							type="text"
+							bind:value={label}
+							required
+							minlength={1}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="Alimentação"
+						/>
+					</div>
+
+					<div>
+						<label for="cat-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
+						<select
+							id="cat-nature"
+							bind:value={nature}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+						>
+							{#each Object.entries(CATEGORY_NATURE_LABELS) as [value, label_str]}
+								<option value={value}>{label_str}</option>
+							{/each}
+						</select>
+					</div>
 				</div>
 
-				<div>
-					<label for="cat-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
-					<select
-						id="cat-nature"
-						bind:value={nature}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-					>
-						{#each Object.entries(CATEGORY_NATURE_LABELS) as [value, label_str]}
-							<option value={value}>{label_str}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div class="flex gap-3 pt-2">
+				<div class="px-6 pb-6 flex gap-3">
 					<button
 						type="submit"
 						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
@@ -635,7 +643,7 @@
 					<button
 						type="button"
 						onclick={() => { showForm = false; resetForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 					>
 						Cancelar
 					</button>
@@ -650,17 +658,28 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { deletingId = null; deleteError = ''; }} onkeydown={(e) => { if (e.key === 'Escape') { deletingId = null; deleteError = ''; } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir categoria</h2>
-			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
-
-			{#if deleteError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{deleteError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Trash2 class="w-5 h-5 text-danger" />
+					<h2 class="text-lg font-bold text-text-primary">Excluir categoria</h2>
 				</div>
-			{/if}
+				<button onclick={() => { deletingId = null; deleteError = ''; }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<div class="flex gap-3">
+			<div class="px-6 pb-4 space-y-4 pt-4">
+				<p class="text-muted text-sm">Tem certeza? Esta ação não pode ser desfeita.</p>
+
+				{#if deleteError}
+					<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{deleteError}
+					</div>
+				{/if}
+			</div>
+
+			<div class="px-6 pb-6 flex gap-3">
 				<button
 					onclick={() => handleDelete(deletingId!)}
 					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
@@ -669,7 +688,7 @@
 				</button>
 				<button
 					onclick={() => { deletingId = null; deleteError = ''; }}
-					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 				>
 					Cancelar
 				</button>
@@ -683,69 +702,77 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showSubForm = false; resetSubForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showSubForm = false; resetSubForm(); } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-4">
-				{subEditingId ? 'Editar subcategoria' : 'Nova subcategoria'}
-			</h2>
-
-			{#if subFormError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{subFormError}
-				</div>
-			{/if}
-
-			<form onsubmit={handleSubSubmit} class="space-y-4">
-				<div>
-					<label for="sub-label" class="block text-xs text-muted mb-1.5">Nome da subcategoria</label>
-					<input
-						id="sub-label"
-						type="text"
-						bind:value={subLabel}
-						required
-						minlength={1}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						placeholder="Ex: Supermercado"
-					/>
-				</div>
-
-				<div>
-					<label for="sub-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
-					<select
-						id="sub-nature"
-						bind:value={subNature}
-						onchange={() => { subCategoryId = filteredCategories.length > 0 ? filteredCategories[0].id : ''; }}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-					>
-						{#each Object.entries(CATEGORY_NATURE_LABELS) as [value, label_str]}
-							<option value={value}>{label_str}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div>
-					<label for="sub-category" class="block text-xs text-muted mb-1.5">Categoria</label>
-					<select
-						id="sub-category"
-						bind:value={subCategoryId}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-					>
-						{#each filteredCategories as cat}
-							<option value={cat.id}>{cat.label}</option>
-						{/each}
-					</select>
-				</div>
-
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
 				<div class="flex items-center gap-2">
-					<input
-						id="sub-active"
-						type="checkbox"
-						bind:checked={subIsActive}
-						class="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 bg-surface-3"
-					/>
-					<label for="sub-active" class="text-sm text-text-primary">Ativo</label>
+					<Layers class="w-5 h-5 text-primary" />
+					<h2 class="text-lg font-bold text-text-primary">{subEditingId ? 'Editar subcategoria' : 'Nova subcategoria'}</h2>
+				</div>
+				<button onclick={() => { showSubForm = false; resetSubForm(); }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
+
+			<form onsubmit={handleSubSubmit}>
+				{#if subFormError}
+					<div class="mx-6 mt-4 bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{subFormError}
+					</div>
+				{/if}
+
+				<div class="px-6 pb-4 space-y-4 {subFormError ? 'pt-4' : 'pt-4'}">
+					<div>
+						<label for="sub-label" class="block text-xs text-muted mb-1.5">Nome da subcategoria</label>
+						<input
+							id="sub-label"
+							type="text"
+							bind:value={subLabel}
+							required
+							minlength={1}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="Ex: Supermercado"
+						/>
+					</div>
+
+					<div>
+						<label for="sub-nature" class="block text-xs text-muted mb-1.5">Natureza</label>
+						<select
+							id="sub-nature"
+							bind:value={subNature}
+							onchange={() => { subCategoryId = filteredCategories.length > 0 ? filteredCategories[0].id : ''; }}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+						>
+							{#each Object.entries(CATEGORY_NATURE_LABELS) as [value, label_str]}
+								<option value={value}>{label_str}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div>
+						<label for="sub-category" class="block text-xs text-muted mb-1.5">Categoria</label>
+						<select
+							id="sub-category"
+							bind:value={subCategoryId}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+						>
+							{#each filteredCategories as cat}
+								<option value={cat.id}>{cat.label}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="flex items-center gap-2">
+						<input
+							id="sub-active"
+							type="checkbox"
+							bind:checked={subIsActive}
+							class="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 bg-surface-3"
+						/>
+						<label for="sub-active" class="text-sm text-text-primary">Ativo</label>
+					</div>
 				</div>
 
-				<div class="flex gap-3 pt-2">
+				<div class="px-6 pb-6 flex gap-3">
 					<button
 						type="submit"
 						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
@@ -755,7 +782,7 @@
 					<button
 						type="button"
 						onclick={() => { showSubForm = false; resetSubForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 					>
 						Cancelar
 					</button>
@@ -770,17 +797,28 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { subDeletingId = null; subDeleteError = ''; }} onkeydown={(e) => { if (e.key === 'Escape') { subDeletingId = null; subDeleteError = ''; } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir subcategoria</h2>
-			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
-
-			{#if subDeleteError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{subDeleteError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Trash2 class="w-5 h-5 text-danger" />
+					<h2 class="text-lg font-bold text-text-primary">Excluir subcategoria</h2>
 				</div>
-			{/if}
+				<button onclick={() => { subDeletingId = null; subDeleteError = ''; }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<div class="flex gap-3">
+			<div class="px-6 pb-4 space-y-4 pt-4">
+				<p class="text-muted text-sm">Tem certeza? Esta ação não pode ser desfeita.</p>
+
+				{#if subDeleteError}
+					<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{subDeleteError}
+					</div>
+				{/if}
+			</div>
+
+			<div class="px-6 pb-6 flex gap-3">
 				<button
 					onclick={() => handleSubDelete(subDeletingId!)}
 					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
@@ -789,7 +827,7 @@
 				</button>
 				<button
 					onclick={() => { subDeletingId = null; subDeleteError = ''; }}
-					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 				>
 					Cancelar
 				</button>
@@ -803,45 +841,53 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { showCurForm = false; resetCurForm(); }} onkeydown={(e) => { if (e.key === 'Escape') { showCurForm = false; resetCurForm(); } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-4">
-				{curEditingId ? 'Editar moeda' : 'Nova moeda'}
-			</h2>
-
-			{#if curFormError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{curFormError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Coins class="w-5 h-5 text-primary" />
+					<h2 class="text-lg font-bold text-text-primary">{curEditingId ? 'Editar moeda' : 'Nova moeda'}</h2>
 				</div>
-			{/if}
+				<button onclick={() => { showCurForm = false; resetCurForm(); }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<form onsubmit={handleCurSubmit} class="space-y-4">
-				<div>
-					<label for="cur-label" class="block text-xs text-muted mb-1.5">Nome da moeda</label>
-					<input
-						id="cur-label"
-						type="text"
-						bind:value={curLabel}
-						required
-						minlength={1}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						placeholder="Real Brasileiro"
-					/>
+			<form onsubmit={handleCurSubmit}>
+				{#if curFormError}
+					<div class="mx-6 mt-4 bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{curFormError}
+					</div>
+				{/if}
+
+				<div class="px-6 pb-4 space-y-4 {curFormError ? 'pt-4' : 'pt-4'}">
+					<div>
+						<label for="cur-label" class="block text-xs text-muted mb-1.5">Nome da moeda</label>
+						<input
+							id="cur-label"
+							type="text"
+							bind:value={curLabel}
+							required
+							minlength={1}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="Real Brasileiro"
+						/>
+					</div>
+
+					<div>
+						<label for="cur-symbol" class="block text-xs text-muted mb-1.5">Símbolo</label>
+						<input
+							id="cur-symbol"
+							type="text"
+							bind:value={curSymbol}
+							required
+							minlength={1}
+							class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+							placeholder="R$"
+						/>
+					</div>
 				</div>
 
-				<div>
-					<label for="cur-symbol" class="block text-xs text-muted mb-1.5">Símbolo</label>
-					<input
-						id="cur-symbol"
-						type="text"
-						bind:value={curSymbol}
-						required
-						minlength={1}
-						class="w-full bg-surface-3 border border-border/70 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
-						placeholder="R$"
-					/>
-				</div>
-
-				<div class="flex gap-3 pt-2">
+				<div class="px-6 pb-6 flex gap-3">
 					<button
 						type="submit"
 						class="flex-1 bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
@@ -851,7 +897,7 @@
 					<button
 						type="button"
 						onclick={() => { showCurForm = false; resetCurForm(); }}
-						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+						class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 					>
 						Cancelar
 					</button>
@@ -866,17 +912,28 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => { curDeletingId = null; curDeleteError = ''; }} onkeydown={(e) => { if (e.key === 'Escape') { curDeletingId = null; curDeleteError = ''; } }} role="presentation">
 		<div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
-			<h2 class="text-lg font-bold text-text-primary mb-2">Excluir moeda</h2>
-			<p class="text-muted text-sm mb-6">Tem certeza? Esta ação não pode ser desfeita.</p>
-
-			{#if curDeleteError}
-				<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-					{curDeleteError}
+		<div class="relative bg-surface-2 border border-border rounded-2xl w-full max-w-sm shadow-2xl animate-fade-up" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+			<div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50">
+				<div class="flex items-center gap-2">
+					<Trash2 class="w-5 h-5 text-danger" />
+					<h2 class="text-lg font-bold text-text-primary">Excluir moeda</h2>
 				</div>
-			{/if}
+				<button onclick={() => { curDeletingId = null; curDeleteError = ''; }} class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-text-primary hover:bg-surface-2 transition-all" title="Fechar">
+					<X class="w-4 h-4" />
+				</button>
+			</div>
 
-			<div class="flex gap-3">
+			<div class="px-6 pb-4 space-y-4 pt-4">
+				<p class="text-muted text-sm">Tem certeza? Esta ação não pode ser desfeita.</p>
+
+				{#if curDeleteError}
+					<div class="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+						{curDeleteError}
+					</div>
+				{/if}
+			</div>
+
+			<div class="px-6 pb-6 flex gap-3">
 				<button
 					onclick={() => handleCurDelete(curDeletingId!)}
 					class="flex-1 bg-danger/15 text-danger border border-danger/30 rounded-lg py-2.5 text-sm font-medium hover:bg-danger/25 transition-all duration-200 active:scale-[0.98]"
@@ -885,7 +942,7 @@
 				</button>
 				<button
 					onclick={() => { curDeletingId = null; curDeleteError = ''; }}
-					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200"
+					class="flex-1 text-muted hover:text-text-primary border border-border/70 rounded-lg py-2.5 text-sm transition-all duration-200 active:scale-[0.98]"
 				>
 					Cancelar
 				</button>
