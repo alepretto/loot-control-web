@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
-	import { User, Globe, Bell, Shield, Clock, Mail, CheckCircle2, Lock } from 'lucide-svelte';
+	import { User, Globe, Bell, Shield, Clock, Mail, CheckCircle2, Lock, DollarSign } from 'lucide-svelte';
+	import { getCurrencies, updateUserPreferences } from '$lib/api';
+	import type { Currency } from '$lib/types/currency';
 
 	const TIMEZONES = [
 		{ value: 'America/Sao_Paulo', label: 'Brasília (UTC-3)' },
@@ -35,14 +37,51 @@
 		$auth?.role === 'admin' ? '#2563eb' : '#22c55e'
 	);
 
-	onMount(() => {
+	// --- Display Currency ---
+	let currencies = $state<Currency[]>([]);
+	let selectedCurrencyId = $state<string | null>(null);
+	let currencySaved = $state(false);
+	let currencyLoading = $state(false);
+
+	// --- Notifications ---
+	let timezoneSaved = $state(false);
+
+	onMount(async () => {
 		selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
+
+		// Load currencies
+		try {
+			currencies = await getCurrencies();
+		} catch { /* ignore */ }
+
+		// Set initial value from user preferences
+		if ($auth?.display_currency_id) {
+			selectedCurrencyId = $auth.display_currency_id;
+		} else if (currencies.length > 0) {
+			// Default to first currency that looks like BRL
+			const brl = currencies.find(c => c.code === 'BRL');
+			selectedCurrencyId = brl?.id ?? currencies[0].id;
+		}
 	});
 
 	function saveTimezone() {
 		localStorage.setItem('timezone', selectedTimezone);
-		saved = true;
-		setTimeout(() => { saved = false; }, 2000);
+		timezoneSaved = true;
+		setTimeout(() => { timezoneSaved = false; }, 2000);
+	}
+
+	async function saveDisplayCurrency() {
+		currencyLoading = true;
+		try {
+			const updated = await updateUserPreferences({ display_currency_id: selectedCurrencyId });
+			auth.setUser(updated);
+			currencySaved = true;
+		} catch (e) {
+			console.error('Failed to save display currency', e);
+		} finally {
+			currencyLoading = false;
+			setTimeout(() => { currencySaved = false; }, 2000);
+		}
 	}
 </script>
 
@@ -115,8 +154,57 @@
 			</div>
 		</div>
 
-		<!-- Timezone Section -->
+		<!-- Display Currency Section -->
 		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 140ms;">
+			<div class="flex items-center gap-2.5 mb-4">
+				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-accent/10 text-accent">
+					<DollarSign class="w-4 h-4" />
+				</div>
+				<div>
+					<h2 class="text-sm font-semibold text-text-primary">Moeda de exibição</h2>
+					<p class="text-[11px] text-muted">Define a moeda padrão para conversão e exibição de valores</p>
+				</div>
+			</div>
+
+			<div class="space-y-3">
+				<div>
+					<label for="currency-select" class="block text-xs text-muted mb-1.5">Selecione a moeda</label>
+					<div class="flex gap-3">
+						<div class="relative flex-1">
+							<div class="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+								<DollarSign class="w-4 h-4" />
+							</div>
+							<select
+								id="currency-select"
+								bind:value={selectedCurrencyId}
+								class="w-full bg-surface-3 border border-border/70 rounded-lg pl-9 pr-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60 transition-all appearance-none cursor-pointer"
+							>
+								<option value={null}>Selecione uma moeda</option>
+								{#each currencies as c}
+									<option value={c.id}>{c.code} — {c.label} ({c.symbol})</option>
+								{/each}
+							</select>
+						</div>
+						<button
+							onclick={saveDisplayCurrency}
+							disabled={currencyLoading}
+							class="bg-accent hover:bg-[#16a34a] text-white rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-200 active:scale-[0.98] shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{currencyLoading ? 'Salvando...' : 'Salvar'}
+						</button>
+					</div>
+				</div>
+				{#if currencySaved}
+					<div class="flex items-center gap-1.5 text-accent text-xs animate-fade-in">
+						<CheckCircle2 class="w-3.5 h-3.5" />
+						Moeda de exibição salva!
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Timezone Section -->
+		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 210ms;">
 			<div class="flex items-center gap-2.5 mb-4">
 				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
 					<Globe class="w-4 h-4" />
@@ -153,7 +241,7 @@
 						</button>
 					</div>
 				</div>
-				{#if saved}
+				{#if timezoneSaved}
 					<div class="flex items-center gap-1.5 text-accent text-xs animate-fade-in">
 						<CheckCircle2 class="w-3.5 h-3.5" />
 						Fuso horário salvo!
@@ -163,7 +251,7 @@
 		</div>
 
 		<!-- Notifications Section -->
-		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 210ms;">
+		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 280ms;">
 			<div class="flex items-center justify-between mb-4">
 				<div class="flex items-center gap-2.5">
 					<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-[#f59e0b]/10 text-[#f59e0b]">
@@ -232,7 +320,7 @@
 		</div>
 
 		<!-- Account Section -->
-		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 280ms;">
+		<div class="bg-surface border border-border/50 rounded-xl p-5 animate-fade-up" style="animation-delay: 350ms;">
 			<div class="flex items-center gap-2.5 mb-4">
 				<div class="w-8 h-8 rounded-lg flex items-center justify-center bg-[#8b5cf6]/10 text-[#8b5cf6]">
 					<User class="w-4 h-4" />

@@ -351,4 +351,20 @@ export async function createExchangeRate(data: import('$lib/types/exchange_rate'
 	});
 }
 
+// User Preferences
+export async function updateUserPreferences(data: import('$lib/types/auth').UserPreferencesUpdate): Promise<import('$lib/types/auth').AuthUser> {
+	return request<import('$lib/types/auth').AuthUser>('/users/me/preferences', {
+		method: 'PATCH',
+		body: JSON.stringify(data)
+	});
+}
+
+// Admin
+export async function updateExchangeRates(data: import('$lib/types/auth').UpdateExchangeRatesRequest): Promise<import('$lib/types/auth').UpdateExchangeRatesResponse> {
+	return request<import('$lib/types/auth').UpdateExchangeRatesResponse>('/admin/update-exchange-rates', {
+		method: 'POST',
+		body: JSON.stringify(data)
+	});
+}
+
 export { getToken, setToken, clearToken };
